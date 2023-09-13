@@ -1,0 +1,397 @@
+#!/usr/bin/env bash
+
+# ----------------------------------------------------------------
+# Name                 archinstall_autoBash.shlib
+# Description          Functions used by the shell scripts
+# Author               Sandro Müller (sandro(ÄT)universalaccount.de)
+# Licence              GPLv3
+# ----------------------------------------------------------------
+
+# ---------
+# Functions
+# ---------
+function check-bashVersion() {
+    # Parameter 1: min. required (major) bash version
+
+    if [ "${BASH_VERSINFO[0]}" -lt "${1}" ]; then
+        echo -e "Current bash version: ${BASH_VERSINFO[0]}\nMin. required version: '${1}'\nexit, sorry"
+        exit 1
+    fi
+}
+
+function check-devicePath() {
+    # Parameter 1: device path (e.g. /dev/vda)
+
+    echo "Checking if '${1}' ist available"
+    if [ ! -b "${1}" ]; then   # if ${device} ("file") not available
+        echo -e "\e[0;33m!!! '${1}' not found !!!\e[39m \nExit the script"
+        exit 1
+    fi
+}
+
+function check-exitStatusLastCommand() {
+    # Parameter 1: exit status (0 = no error)
+
+    if [ "${1}" -ne 0 ]; then
+        echo -e "\e[0;31m----------------------------------------\e[39m"
+        echo -e "\e[0;31mERROR - Exit status last command: '${1}'\e[39m"
+        echo -e "\e[0;31m----------------------------------------\e[39m"
+        echo "Press Enter to continue." && read -r
+    fi
+}
+
+function erase-device() {
+    # Parameter 1: device path (e.g. /dev/vda)
+    # Parameter 2: blocksize
+
+    if [ "${eraseDisk}" = "true" ]; then   # Erase (overwrite) device
+        echo -e "\e[0;33m!!! Erasing '${1}', will take some time... !!!\e[39m"
+        echo "Press Enter to continue or '<CTRL> + <C>' to cancel"   # only for testing
+        read -r                                                      # only for testing
+        dd if=/dev/urandom of="${1}" bs="${2}" status=progress       #TODO: test # erase device by copying random bytes to the hole disk
+    fi
+}
+
+function partition-disk() {
+    # Parameter 1: bootmode (Bios or Uefi)
+    # Parameter 2: partition type (gpt or mbr) (Uefi: only gpt)
+    # Parameter 3: device path (e.g. /dev/vda)
+    # Parameter 4: size of swap partition
+    # Parameter 5: size of EFI partition (only when Uefi bootmode)
+
+    if [ "${1}" = "Bios" ]; then
+        partition-diskBios "${2}" "${3}" "${4}"
+    else
+        partition-diskUefi "${3}" "${4}" "${5}"
+    fi
+}
+
+function partition-diskBios() {
+    # Parameter 1: partition type (gpt or mbr)
+    # Parameter 2: device path (e.g. /dev/vda)
+    # Parameter 3: size of swap partition
+
+    if [ "$1" = "gpt" ]; then
+        (
+        echo g   # --- create a new empty GPT partition table ---
+        
+        echo n   # --- add a new partition: Small 1 MB partition --
+        echo     # accept default value (Partition No: 1)
+        echo     # accept default value (Start first sector)
+        echo +1M # partition size
+        echo t   # change partition type
+        echo     # accept default value (Partition No: 1)
+        echo 4   # Type: Bios boot
+
+        echo n   # --- add a new partition: Swap ---
+        echo     # accept default value (Partition No: 2)
+        echo     # accept default value (Start of first sector)
+        echo +"${3}"M # partition size
+        echo t   # change partition type
+        echo     # accept default value (Partition No: 2)
+        echo 19  # Type: Linux swap
+
+        echo n   # --- add a new partition: root ---
+        echo     # accept default value (Partition No: 3)
+        echo     # accept default value (start of first sector)
+        echo     # accept default value (end of last sector (Remainder of device))
+
+        echo w   # Write changes
+        ) | sudo fdisk "${2}" 1>/dev/null
+    else
+        # partition type "mbr"
+        (
+        echo o   # --- create a new empty MBR (DOS) partition table ---
+        
+        echo n   # --- add a new partition: Swap ---
+        echo p   # primary (partition type)
+        echo     # accept default value (Partition No: 1)
+        echo     # accept default value (Start of first sector)
+        echo +"${3}"M # partition size
+        echo t   # change partition type
+        echo     # accept default value (Partition No: 1)
+        echo 82  # Type: Linux swap / Solaris
+
+        echo n   # --- add a new partition: root ---
+        echo p   # primary (partition type)
+        echo     # accept default value (Partition No: 2)
+        echo     # accept default value (start of first sector)
+        echo -1M # leaves small unallocated space of 1MB at the end of the disk
+
+        echo w   # Write changes
+        ) | sudo fdisk "${2}" 1>/dev/null
+    fi
+}
+
+function partition-diskUefi() {
+    # Parameter 1: device path (e.g. /dev/vda)
+    # Parameter 2: size of swap partition
+    # Parameter 3: size of EFI partition
+
+    (
+    echo g   # --- create a new empty GPT partition table ---
+
+    echo n   # --- add a new partition: EFI boot partition ---
+    echo     # accept default value (Partition No: 1)
+    echo     # accept default value (Start first sector)
+    echo +"${3}"M # partition size
+    echo t   # change partition type
+    echo     # accept default value (Partition No: 1)
+    echo 1   # Type: EFI System
+
+    echo n   # --- add a new partition: Swap ---
+    echo     # accept default value (Partition No: 2)
+    echo     # accept default value (Start of first sector)
+    echo +"${2}"M # partition size
+    echo t   # change partition type
+    echo     # accept default value (Partition No: 2)
+    echo 19  # Type: Linux swap
+
+    echo n   # --- add a new partition: root ---
+    echo     # accept default value (Partition No: 3)
+    echo     # accept default value (start of first sector)
+    echo     # accept default value (end of last sector (Remainder of device))
+
+    echo w   # Write changes
+    ) | sudo fdisk "${1}" 1>/dev/null
+}
+
+function format-partition() {
+    # Parameter 1: device
+    # Parameter 2: bootMode
+    # Parameter 3: partitionType
+    # Parameter 4: filesystemType
+    # Parameter 5: fileSystemTypeEfi
+    # Parameter 6: fatSize
+    # Parameter 7: partitionLabelRoot
+    # Parameter 8: partitionLabelEfi
+    # Parameter 9: partitionLabelHome
+
+    if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then            # Bios + gpt
+        # Partition No 1: empty
+        swapPartitionNo=2
+        rootPartitionNo=3
+
+        mkswap "${1}${swapPartitionNo}"                           # make swap-partition
+        mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"         # format root-partition
+
+    elif [ "${2}" = "Bios" ] && [ "${3}" = "mbr" ]; then          # Bios + mbr
+        swapPartitionNo=1
+        rootPartitionNo=2
+
+        mkswap "${1}${swapPartitionNo}"                           # make swap-partition
+        mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"         # format root-partition
+
+    else                                                          # Uefi + gpt
+        efiPartitionNo=1
+        swapPartitionNo=2
+        rootPartitionNo=3
+
+        mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}"   # format efi-partition
+        mkswap "${1}${swapPartitionNo}"                           # make swap-partition
+        mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"         # format root-partition
+    fi
+}
+
+function mount-partition() {
+    # Parameter 1: device
+    # Parameter 2: bootMode
+    # Parameter 3: filesystemType
+    # Parameter 4: efiPartitionNo
+    # Parameter 5: swapPartitionNo
+    # Parameter 6: rootPartitionNo
+
+    #echo -e "efiPartitionNo ${4} \nswapPartitionNo ${5} \nrootPartitionNo ${6}"   # only for test
+
+    case "${3}" in   # set mount option
+        "btrfs")
+            mountOption="-o ${mountOptionBtrfs}"
+            #mountOption="-o ${mountOptionBtrfs} -t ${3}"
+        ;;
+
+        *)
+            if [ "${mountOptionDefault}" = "" ]; then   # let mount command go for it
+                mountOption="${mountOptionDefault}"
+            else
+                mountOption="-o ${mountOptionDefault}"
+            fi
+        ;;
+    esac
+
+    # mount partitions:
+    if [ "${2}" = "Uefi" ]; then
+        mkdir /mnt/"${efiDir}"
+        mount "${1}${4}" /mnt/"${efiDir}"    # efi-partition
+    fi
+
+    #mount "${mountOption}" "${1}${6}" /mnt  # root-partition, mount with mount options
+    mount "${1}${6}" /mnt                    # root-partition, mount without mount options
+    swapon "${1}${5}"                        # swap-partition
+}
+
+function uncomment-locales() {
+    # Parameter 1: string with the items, seperated by space # Problem: items itsels partially have spaces inside itself (e.g. "en_US.UTF-8 UTF-8") -> no good dilimeter available
+    # Parameter 2: path to the file in which the substitution will take place (should be "/etc/locale.gen")
+
+    # uncomments needed locales in file ${2} (should be "/etc/locale.gen"):
+    for locale in "${arrLocalegen[@]}"; do                   # not using Parameter 1: (see above), but directly the array specified in the config file
+        sed -i "s|#${locale}|${locale}|g" "${2}"
+    done
+}
+
+#set-timezone "${timezone}" /etc/localtime
+function set-timezone() {
+    # Parameter 1: timezone
+    # Parameter 2: localtime file (should be /etc/localtime)
+
+    echo "- set timezone (/etc/localtime)"
+    ln -sf /usr/share/zoneinfo/"${1}" "${2}" # Set the time zone
+    echo "- running hwclock to generate /etc/adjtime"
+    hwclock --systohc 
+}
+
+function set-locales() {
+    echo "- uncomment needed locales in '/etc/locale.gen'"
+    uncomment-locales "${arrLocalegen[*]}" /etc/locale.gen    # uncomment needed locales in "/etc/locale.gen"
+    echo "- generate the locales"
+    locale-gen                                                # Generate the locales
+    echo "- creating the '/etc/locale.conf' file and setting the LANG variable"
+    echo "${defaultLang}" >> /etc/locale.conf                 # set the LANG variable
+    echo "- make settings for the console keyboard layout persistent (/etc/vconsole.conf)"
+    echo "KEYMAP=${consoleKeyboardLayout}" >> /etc/vconsole.conf   # make settings for the console keyboard layout persistent
+}
+
+function config-network() {
+    echo "- setting hostname (/etc/hostname)"
+    echo "${myHostname}" >> /etc/hostname                     # Create / config the hostname file
+    echo "- create + config '/etc/hosts'"
+    {
+        echo "127.0.0.1 localhost"
+        echo "::1 localhost"
+        echo "127.0.1.1 ${myHostname}.${myDomain} ${myHostname}"
+    } >> /etc/hosts                                           # Create / config "/etc/hosts"
+
+    echo "- installing network management software and enabling its systemd unit"
+    #pacman -S --noconfirm --needed "${strListNetworkPkg}"             # installing network management software and enabling its systemd unit so that it starts at boot
+    pacman -S --noconfirm --needed ${strListNetworkPkg}                # installing network management software and enabling its systemd unit so that it starts at boot
+    systemctl enable NetworkManager
+}
+
+function set-password() {
+    # Parameter 1: userId
+
+    echo "- changing password for '${1}' to configured initialPassword"
+    #echo "${1}":password | chpasswd                          # set passwort for userId; script stops and waits for user input
+    printf "${1}:%s" "${initialPassword}" | chpasswd          # set passwort for userId, using ${initialPassword} from config   # or: sudo chpasswd <<<"${1}:${initialPassword}"
+
+    if [ "${forceChangePassword}" = "true" ]; then passwd --expire "${1}"; echo "- forcing '${1}' to change password at next login"; fi     # forces the user to change password at next login
+    # chage -l "${1}"                                         # list password expiration and aging information for userId
+}
+
+function create-userAccount() {
+    echo "- creating account, setting configured initial password; if configured: forcing password change + adding user to group 'libvirt'"
+    for userId in "${arrUserId[@]}"; do
+        #useradd -m -U -s /bin/bash -p "${initialPassword}" "${userId}" # not the safe way, but password is in the config anyway... # create new user including: set initial passwort using ${initialPassword} from config
+        useradd -m -U -s /bin/bash "${userId}"                          # create new user
+
+        set-password "${userId}"
+        
+        if [ "${virtualization}" = "true" ]; then usermod -aG libvirt "${userId}"; fi   # add user to libvirt group
+    done
+}
+
+function config-sudoUser() {
+    for userId in "${arrSudoUser[@]}"; do
+        echo "${userId} ALL=(ALL) ALL" >> "/etc/sudoers.d/sudoUser"
+        #usermod -aG wheel "${userId}"
+    done
+}
+
+function install-grafics() {
+    if [ "${graficsCardInstalled}" = "true" ]; then
+        echo "- installing configured grafics packages"
+        pacman -S --noconfirm --needed ${strListGraficsCardPackage}    # install packages for the grafics card
+        check-exitStatusLastCommand $?
+    else
+        echo "- NOT installing configured grafics packages, becaus parameter ist set to 'false'"
+    fi
+}
+
+function install-bootloader() {
+    if [ "${bootloader}" = "grub" ]; then
+        echo "- installing grub"
+        pacman -S --noconfirm grub                            # grub: install
+
+        if [ "${bootMode}" = "Bios" ]; then                   # Bios
+            echo "- ... for Bios boot mode"
+            grub-install --target=i386-pc "${device}"
+        else                                                  # Uefi
+            echo "- ... for Uefi boot mode"
+            pacman -S --noconfirm efibootmgr
+            grub-install --target=x86_64-efi --efi-directory="${pathEfi}" --bootloader-id="${bootloaderId}"
+        fi
+
+        echo "- creating Grub config file"
+        grub-mkconfig -o "${pathGrubCfg}"                     # grub: create config
+    fi
+}
+
+function install-additionalPackages() {
+    echo "- installing configured standard, print, firewall, conflicting packages"
+    pacman -S --noconfirm --needed ${strListAdditionalPkg}
+    pacman -S --noconfirm --needed ${strListAdditionalPkg_print}
+    pacman -S --noconfirm --needed ${strListAdditionalPkg_firewall}
+    #pacman -S --noconfirm ${strListAdditionalPkg_PowerMgmt}  #TODO: query if corresponding variable is set -> install
+    yes | pacman -S ${strListAdditionalPkg_conflicting}       # install packages with known conflicts an confirm prompt-question with yes
+
+    if [ "${virtualization}" = "true" ]; then
+        #TODO: check cpu for virtualization support
+        #TODO: nested virtualization
+
+        echo "- installing additional packages for virtualization"
+        pacman -S --noconfirm --needed ${strListAdditionalPkg_VM}
+        #TODO: config '/etc/libvirt/libvirtd.conf' # e.g. set: unix_sock_group = "libvirt" # unix_sock_rw_perms = "0770"
+
+        #pacmman -S -noconfirm --needed spice-vdagent   #TODO: only if the machine is a virtual machine: clipboard sharing Guest<->Host
+    fi
+
+    #pacman -S --noconfirm --needed "${strListAdditionalPkg_zsh}"
+    #TODO: if zsh: echo "${zshSyntaxConf}" >> ~/.zshrc
+}
+
+function enable-service() {
+    for service in "${arrService[@]}"; do
+        systemctl enable "${service}"
+    done
+}
+
+function install-DesktopEnvironment() {
+    if [ "${installDesktopEnvironment}" = "true" ]; then
+        case "${desktopEnvironmentName}" in
+            "Gnome")
+                echo "- installing packages for Gnome + enabling gdm"
+                pacman -S --noconfirm --needed ${strListBasePkg_Gnome}
+                #pacman -S --noconfirm --needed gnome-extra
+
+                systemctl enable gdm
+            ;;
+
+            *)
+                echo "TOOD: implement case - default-Zweig: desktopEnvironmentName"
+            ;;
+        esac
+
+        echo "- installing additional packages"
+        pacman -S --noconfirm --needed ${strListDesktopEnvPgk}
+        echo "- installing additional fonts"
+        pacman -S --noconfirm --needed ${strListFontPkg}
+
+    else
+        echo "DesktopEnvironment will not be installed because variable installDesktopEnvironment ist set to 'false'"
+    fi
+}
+
+
+function newFunction() {
+    echo "#TODO: implement function '${FUNCNAME}'"
+}
