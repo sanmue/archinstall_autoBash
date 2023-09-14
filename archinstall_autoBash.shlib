@@ -167,29 +167,42 @@ function format-partition() {
     # Parameter 8: partitionLabelEfi
     # Parameter 9: partitionLabelHome
 
-    if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then            # Bios + gpt
+    if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then                 # --- Bios + gpt
         # Partition No 1: empty
         swapPartitionNo=2
         rootPartitionNo=3
 
-        mkswap "${1}${swapPartitionNo}"                           # make swap-partition
-        mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"         # format root-partition
+        mkswap "${1}${swapPartitionNo}"                                # make swap-partition
+        if [ "${4}" = "btrfs" ]; then
+            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs
+        else
+            mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"          # format root-partition
+        fi
 
-    elif [ "${2}" = "Bios" ] && [ "${3}" = "mbr" ]; then          # Bios + mbr
+    elif [ "${2}" = "Bios" ] && [ "${3}" = "mbr" ]; then               # --- Bios + mbr
         swapPartitionNo=1
         rootPartitionNo=2
 
-        mkswap "${1}${swapPartitionNo}"                           # make swap-partition
-        mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"         # format root-partition
+        mkswap "${1}${swapPartitionNo}"                                # make swap-partition
 
-    else                                                          # Uefi + gpt
+        if [ "${4}" = "btrfs" ]; then
+            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs
+        else
+            mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"          # format root-partition
+        fi
+
+    else                                                               # --- Uefi + gpt
         efiPartitionNo=1
         swapPartitionNo=2
         rootPartitionNo=3
 
-        mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}"   # format efi-partition
-        mkswap "${1}${swapPartitionNo}"                           # make swap-partition
-        mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"         # format root-partition
+        mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}"        # format efi-partition
+        mkswap "${1}${swapPartitionNo}"                                # make swap-partition
+        if [ "${4}" = "btrfs" ]; then
+            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs
+        else
+            mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"          # format root-partition
+        fi
     fi
 }
 
