@@ -1,7 +1,9 @@
 # archinstall_autoBash - automated installation of Arch Linux via a bash script
-- Bash script to automate my arch linux installation (simple rudimentary)
+- Bash script to automate my arch linux installation
   - installation is done based on the variables set in a separate configuration file
   - no manual intervention is required (hopefully)
+  - includes partitioning + formating of the disk (optional via config)
+  - btrsf filesystem: subvolumes (create + mount; btrfs subvolume layout an be configured)
 
 # Usage
 ## Boot live system
@@ -13,11 +15,9 @@
   - `git clone https://gitlab.com/sanmue/archinstall_autobash.git`
 - change to the direcory of the cloned repository
   - `cd archinstall_autoBash`
-
 ## Configuration
 - Customize the variables in '`archinstall_autoBash.config`' according to your needs
   - these variables are used by the script to do the installation
-
 ## Start installation of Arch Linux on your machine
 - start the script `archinstall_autoBash.sh`
   - '`./archinstall_autoBash.sh`'
@@ -28,7 +28,7 @@
 - supports only the Example Layouts (Uefi+GPT, Bios+GPT, Bios+MBR):
   - see: https://wiki.archlinux.org/title/Partitioning#Example_layouts
   - no seperate partition for 'home'
-  - creates a swap partition (fix, not optional)
+  - creates a swap partition (fixed, not optional)
   - no swapfile slelectable as alternative to a swap partition 
 - no encryption
 - no LVM or RAID
@@ -39,4 +39,4 @@
   - ! not (well) tested !
 - installing a Desktop Environment is optional (via config)
   - only 'Gnome' selectable (via config)
-
+- ...
