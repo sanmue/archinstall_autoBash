@@ -206,40 +206,208 @@ function format-partition() {
     fi
 }
 
-function mount-partition() {
+function mount-partitionRootInitial() {
+    # Parameter 1: device
+    # Parameter 2: filesystemType
+    # Parameter 3: rootPartitionNo
+    # Parameter 4: mount target (e.g. /mnt)
+
+    #echo "P1 device: ${1}; P2 filesystemType: ${2}; P3 rootPartitionNo: ${3}; P4 mount target: ${4}"
+
+    case "${2}" in                             # filsystem specific mount options
+        "btrfs")
+            #mountOption="-o ${mountOptionBtrfs}"   # mountOption="-o ${mountOptionBtrfs} -t ${2}"
+            #mountOption="-o ${mountOptionBtrfsInit}"
+
+            echo "mount -o ${mountOptionBtrfsInit} ${1}${3} ${4}"
+            mount -o "${mountOptionBtrfsInit}" "${1}${3}" "${4}" 
+        ;;
+
+        *)
+            if [ "${mountOptionDefault}" = "" ]; then   # no options configured, let mount command go for it
+                #mountOption="${mountOptionDefaultInit}"
+                mount "${1}${3}" "${4}"
+            else
+                #mountOption="-o ${mountOptionDefaultInit}"
+                
+                echo "mount -o ${mountOptionDefaultInit} ${1}${3} ${4}"
+                mount -o "${mountOptionDefaultInit}" "${1}${3}" "${4}"
+            fi
+        ;;
+    esac
+
+    #echo "mount ${mountOption} ${1}${3} ${4}"
+    #mount "${mountOption}" "${1}${3}" "${4}"   # root-partition, mount with mount options
+    #mount "${1}${3}" "${4}"                   # root-partition, fix, mount without mount options
+}
+
+function mount-partition() {                  # mounting all partitions (btrfs: subvolumes) as preparation for installation
     # Parameter 1: device
     # Parameter 2: bootMode
     # Parameter 3: filesystemType
     # Parameter 4: efiPartitionNo
     # Parameter 5: swapPartitionNo
     # Parameter 6: rootPartitionNo
+    # Parameter 7: mount target (e.g. /mnt)
 
     #echo -e "efiPartitionNo ${4} \nswapPartitionNo ${5} \nrootPartitionNo ${6}"   # only for test
 
-    case "${3}" in   # set mount option
-        "btrfs")
-            mountOption="-o ${mountOptionBtrfs}"
-            #mountOption="-o ${mountOptionBtrfs} -t ${3}"
+    swapon "${1}${5}"                          # swap-partition # e.g. swapon /dev/vda2
+
+    if [ "${2}" = "Uefi" ]; then               # uefi
+        mkdir "${7}${pathEfi}"                 # e.g. /mnt/efi
+        mount "${1}${4}" "${7}${pathEfi}"      # EFI-partition # e.g. mount /dev/vda1 /mnt/efi
+    fi
+
+    case "${3}" in                             # filsystem specific mount options
+        "btrfs")                               # btrfs: mount every subvolume (creating related folder if necessary)
+            echo "Mounting btrfs subvolumes..."
+
+            for subvol in "${!btrfsSubvolLayout[@]}"; do
+                if [ "${subvol}" = "@" ]; then                             # special handling for root subvolume @; no noeed to create root folder '/' on /mnt
+                    mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}"   # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@ /dev/vda3 /mnt
+                    continue
+                fi
+
+                if [ ! -e  "${7}${btrfsSubvolLayout[${subvol}]}" ]; then   # if mount target (folder) NOT existing
+                    echo -e "\e[0;33m    |__ mount target '${7}${btrfsSubvolLayout[${subvol}]}' does not exist, folder will be created...\e[39m" # e.g. /mnt/home
+                    sudo mkdir -p "${7}${btrfsSubvolLayout[${subvol}]}"
+                fi
+
+                mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}${btrfsSubvolLayout[${subvol}]}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@ /dev/vda3 /mnt/home
+            done
+
+            echo "Current block device list:"
+            lsblk
         ;;
 
-        *)
-            if [ "${mountOptionDefault}" = "" ]; then   # let mount command go for it
-                mountOption="${mountOptionDefault}"
-            else
-                mountOption="-o ${mountOptionDefault}"
+        *)                                              # other filesystems
+            if [ "${mountOptionDefault}" = "" ]; then   # no options configured, let mount command go for it
+                mount "${1}${3}" "${7}"
+            else                
+                echo "mount -o ${mountOptionDefault} ${1}${3} ${7}"
+                mount -o "${mountOptionDefault}" "${1}${3}" "${7}"
             fi
         ;;
     esac
+}
 
-    # mount partitions:
-    if [ "${2}" = "Uefi" ]; then
-        mkdir /mnt/"${efiDir}"
-        mount "${1}${4}" /mnt/"${efiDir}"    # efi-partition
+function create-btrfsSubvolume() {
+    # Parameter 1: mount target of root subvolume (e.g. /mnt)
+
+    sudo btrfs subvolume create "${1}/@"       # want the root subvolume being the first  (-> ID 256)
+    sudo btrfs subvolume create "${1}/@home"   # want the home subvolume being the second (-> ID 257)
+    
+    for subvol in "${!btrfsSubvolLayout[@]}"; do
+        if [ ! -e "${1}/${subvol}" ]; then   # wenn Subvolume noch nicht vorhanden
+            echo "|__ Erstelle Subvolume '${subvol}'..."
+            sudo btrfs subvolume create "${1}/${subvol}"
+        else
+            echo -e "\e[0;33m|__ Subvolume '${1}/${subvol}' bereits vorhanden\e[39m"                 
+        fi
+    done
+}
+
+function create-fstab() {   # function not used; btrfs subvolumes get mounted and the genfstab does the job
+    #if [ "${filesystemType}" = "btrfs" ] && [ "${deviceType}" = "ssd" ]; then
+    if [ "${filesystemType}" = "btrfs" ]; then
+        fstabPath="/mnt/etc/fstab"   # "${fstabPath}"
+        #fstabPath="/etc/fstab"   # "${fstabPath}"
+
+        # ### Bios + Uefi
+
+        #touch "${fstabPath}"
+        #echo "# <file system> <dir> <type> <options> <dump> <pass>" > "${fstabPath}"   # fstab with inital comments already available
+
+        # --- root partition              
+        uuid=$(lsblk -n -o UUID "/dev/${deviceName}${rootPartitionNo}" | xargs)
+        echo "${uuid}"
+
+        echo -e "\n# /dev/${deviceName}${rootPartitionNo} LABEL=${partitionLabelRoot}" >> "${fstabPath}"
+        create-fstab4BtrfsRootPartition "${fstabPath}" "${uuid}" "/mnt"  # e.g.: # UUID=656d357b-c3e8-4ae2-8122-1675c9e08edc / btrfs subvol=/@,noatime,discard=async,compress=zstd,space_cache=v2 0 0
+
+        # --- swap partition
+        uuid=$(lsblk -n -o UUID "/dev/${deviceName}${swapPartitionNo}" | xargs)
+        echo -e "\n# /dev/${deviceName}${swapPartitionNo} (swap)" >> "${fstabPath}"
+        echo "UUID=${uuid} none swap defaults 0 0" >> "${fstabPath}"                     # e.g.: UUID=656d357b-c3e8-4ae2-8122-1675c9e08edc none swap defaults 0 0
+
+
+        # ### Uefi only --- EFI-Partition
+        if [ "${bootMode}" = "Uefi" ]; then
+            uuid=$(lsblk -n -o UUID "/dev/${deviceName}${efiPartitionNo}" | xargs)
+            echo -e "\n# /dev/${deviceName}${efiPartitionNo} LABEL=${partitionLabelEfi}" >> "${fstabPath}"
+            echo "UUID=${uuid} ${pathEfi} vfat defaults,noatime 0 2" >> "${fstabPath}"   # e.g. UUID=DE99-988D /efi vfat defaults,noatime 0 2
+        fi
+
+    else   # if not btrfs with ssd
+        genfstab -U /mnt >> "${fstabPath}"
     fi
+}
 
-    #mount "${mountOption}" "${1}${6}" /mnt  # root-partition, mount with mount options
-    mount "${1}${6}" /mnt                    # root-partition, mount without mount options
-    swapon "${1}${5}"                        # swap-partition
+function create-fstab4BtrfsRootPartition() {   # function not used; btrfs subvolumes get mounted and the genfstab does the job
+    # Parameter 1: fstabPath (including /mnt)
+    # Parameter 2: uuid
+    # Parameter 3: mountpoint   # e.g. /mnt
+
+    local mountPoint="${3}"
+
+    echo "Want to make sure, that btrfs root subvolume @ is the first entry in fstab:"
+    echo "UUID=${2} / btrfs ${mountOptionBtrfs},subvol=/@ 0 0" | sudo tee -a "${1}"
+
+    echo -e "\n*** Creating fstab entries for root partition with btrfs subvolumes"
+    for subvol in "${!btrfsSubvolLayout[@]}"; do
+        subvolInFstab='false'
+        mountPointInFstab='false'
+
+        echo "|__ creating entry for subvolume '${subvol}' with mount point '${btrfsSubvolLayout[${subvol}]}'..."
+
+        if [ ! -e  "${mountPoint}${btrfsSubvolLayout[${subvol}]}" ]; then                # if mount target (folder) NOT existing
+            echo -e "\e[0;33m    |__ mount target '${mountPoint}${btrfsSubvolLayout[${subvol}]}' does not exist, folder will be created...\e[39m"
+            sudo mkdir -p "${mountPoint}${btrfsSubvolLayout[${subvol}]}"
+        fi
+
+        if [[ $(grep "subvol=/${subvol}," "${1}") ]]; then                      # if entry for options (e.g. ...'subvol=/@,'...) already present in fstab
+            echo -e "\e[0;33m    |__ entry for subvolume '${subvol}' already present, check and correct if necessary\e[39m"
+            subvolInFstab='true'
+        fi
+
+        if [[ $(grep -E " +${btrfsSubvolLayout[${subvol}]} +" "${1}") ]]; then  # if mount target (e.g. for '/') already present in fstab
+            echo -e "\e[0;33m    |__ mount target '${btrfsSubvolLayout[${subvol}]}' already present, will not create entry '${subvol}' (again), check and correct if necessary\e[39m"
+            mountPointInFstab='true'
+        fi
+
+        if [ "${subvolInFstab}" = 'false' ] && [ "${mountPointInFstab}" = 'false' ]; then   # if not already present create entry for subvolume in fstab
+            # e.g.: UUID=656d357b-... / btrfs subvol=/@,noatime,discard=async,compress=zstd,space_cache=v2 0 0
+            echo "UUID=${2} ${btrfsSubvolLayout[${subvol}]} btrfs ${mountOptionBtrfs},subvol=/${subvol} 0 0" | sudo tee -a "${1}"
+        fi
+    done
+}
+
+function set-btrfsDefaultSubvolume() {
+    # Parameter 1: path   # e.g. /mnt or /
+    
+    if [ -d "${1}" ]; then
+        # ID 256 gen 7 top level 5 path @
+        rootSubvolumeID=$(btrfs subvolume list "${1}" | grep -w "@" | cut -d ' ' -f 2 | xargs)  # e.g. 256
+
+        if [ -n "${rootSubvolumeID}" ]; then
+            btrfs subvolume set-default "${rootSubvolumeID}" "${1}" # e.g.: btrfs subvolume set-default "256" /mnt
+        else
+            echo -e"\e[0;31m!!! Could not set default btrfs subvolume !!!\e[39m"
+            echo "Trying to set ID '256' as default subvolume (root subvolume @)..."
+            btrfs subvolume set-default 256 "${1}"
+        fi
+    else
+        echo -e"\e[0;31m!!! function set-btrfsDefaultSubvolume(): Given path does not exist !!!\e[39m"
+    fi
+}
+
+function modify-fstab() {   
+    # Parameter 1: traget file    # e.g. /mnt/etc/fstab
+
+    if [ "${filesystemType}" = "btrfs" ]; then   # e.g.: btrfs: genfstab adds ...,subvolid=XXX,... to the mount options, which we do not want with regard to snapshots
+        sed -i -e 's/,subvolid=[0-9][0-9][0-9]//' "${1}"
+    fi
 }
 
 function uncomment-locales() {
@@ -252,7 +420,6 @@ function uncomment-locales() {
     done
 }
 
-#set-timezone "${timezone}" /etc/localtime
 function set-timezone() {
     # Parameter 1: timezone
     # Parameter 2: localtime file (should be /etc/localtime)
@@ -269,7 +436,7 @@ function set-locales() {
     echo "- generate the locales"
     locale-gen                                                # Generate the locales
     echo "- creating the '/etc/locale.conf' file and setting the LANG variable"
-    echo "${defaultLang}" >> /etc/locale.conf                 # set the LANG variable
+    echo "LANG=${defaultLangPreferred}" >> /etc/locale.conf   # set the LANG variable   # localectl --no-convert set-keymap de-latin1
     echo "- make settings for the console keyboard layout persistent (/etc/vconsole.conf)"
     echo "KEYMAP=${consoleKeyboardLayout}" >> /etc/vconsole.conf   # make settings for the console keyboard layout persistent
 }
@@ -315,9 +482,10 @@ function create-userAccount() {
 
 function config-sudoUser() {
     for userId in "${arrSudoUser[@]}"; do
-        echo "${userId} ALL=(ALL) ALL" >> "/etc/sudoers.d/sudoUser"
-        #usermod -aG wheel "${userId}"
+        #echo "${userId} ALL=(ALL) ALL" >> "/etc/sudoers.d/sudoUser"
+        usermod -aG wheel "${userId}"   # if btrfs + snapper snapshot-folder '.snapshots' gets chown :wheel (in my ansible playbook, Repo 'ansible_workstation')
     done
+    echo "%wheel ALL=(ALL:ALL) ALL" >> "/etc/sudoers.d/wheel"
 }
 
 function install-grafics() {
@@ -333,7 +501,8 @@ function install-grafics() {
 function install-bootloader() {
     if [ "${bootloader}" = "grub" ]; then
         echo "- installing grub"
-        pacman -S --noconfirm grub                            # grub: install
+        #pacman -S --noconfirm grub                            # grub: install
+        if [ "${filesystemType}" = "btrfs" ]; then pacman -S --noconfirm grub grub-btrfs; else pacman -S --noconfirm grub; fi   # grub-btrfs
 
         if [ "${bootMode}" = "Bios" ]; then                   # Bios
             echo "- ... for Bios boot mode"

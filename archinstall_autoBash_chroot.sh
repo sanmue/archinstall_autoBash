@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#set -x   # enable debug mode
+set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash_chroot.sh
@@ -52,7 +52,6 @@ install-grafics
 
 echo -e "\n\e[0;35m## Boot loader\e[39m"
 install-bootloader
-
 
 # --- Post-installation (original position: after reboot) - ! order changed, was moved forward one position compared to the wiki ! ---
 echo -e "\n\n\e[0;36m# --- Post-installation part of Arch install wiki (original position: after reboot ! order changed, was moved forward one position compared to the wiki) --- \e[39m"

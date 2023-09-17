@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#set -x   # enable debug mode
+set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.sh
@@ -50,7 +50,7 @@ echo "${initialLsblk}"                 # show available block devices at script 
 echo "- checking if device path '${device}' is valid"
 check-devicePath "${device}"           # check if given device path is valid
 
-if [ ${partitionDisk} = "true" ]; then        # if partitioning the device should be executed
+if [ ${partitionDisk} = "true" ]; then        # if partitioning the device should be executed by the script
     echo -e "\n\e[0;35m## Partitioning the disk '${device}'...\e[39m"
 
     erase-device "${device}" "${blockSize}"   # executed only if eraseDisk="true" is set # the device will be erased (overwritten via dd command)
@@ -59,14 +59,30 @@ if [ ${partitionDisk} = "true" ]; then        # if partitioning the device shoul
     lsblk | grep --extended-regexp --invert-match 'rom|loop|airoot'   # show result   # lsblk | grep "${deviceName}"
 fi
 
-if [ ${formatPartition} = "true" ]; then      # if formatting the partitions should be executed
+if [ ${formatPartition} = "true" ]; then      # if formatting the partitions should be executed by the script
     echo -e "\n\e[0;35m## Formating the partitions\e[39m"
     format-partition "${device}" "${bootMode}" "${partitionType}" "${filesystemType}" "${fileSystemTypeEfi}" "${fatSize}" "${partitionLabelRoot}" "${partitionLabelEfi}" "${partitionLabelHome}"
 fi
 
-if [ ${mountPartition} = "true" ]; then       # if mounting of the partitions should be done
-    echo -e "\n\e[0;35m## Mounting the file systems \e[39m"
-    mount-partition "${device}" "${bootMode}" "${filesystemType}" "${efiPartitionNo}" "${swapPartitionNo}" "${rootPartitionNo}"
+if [ ${mountPartition} = "true" ]; then       # this setp is actually only needed for btrfs + subvolumes # if mounting of the partitions should be done by the script
+    echo -e "\n\e[0;35m## Mounting the root file system \e[39m"
+    mount-partitionRootInitial "${device}" "${filesystemType}" "${rootPartitionNo}" "/mnt"
+
+    if [ ${filesystemType} = "btrfs" ]; then  # if btrfs: create subvolumes
+        echo -e "\n\e[0;35m## Creating btrfs subvolume layout\e[39m"
+        create-btrfsSubvolume "/mnt"
+        set-btrfsDefaultSubvolume "/mnt"     # and set default subvolume
+
+        echo "Current subolume list:"
+        btrfs subvol list /mnt
+    fi
+
+    umount /mnt
+fi
+
+if [ ${mountPartition} = "true" ]; then       # preparation for installation   # if mounting of the partitions should be done by the script
+    echo -e "\n\e[0;35m## Mounting all partitions for installation step \e[39m"
+    mount-partition "${device}" "${bootMode}" "${filesystemType}" "${efiPartitionNo}" "${swapPartitionNo}" "${rootPartitionNo}" "/mnt"
 fi
 
 
@@ -78,10 +94,11 @@ echo -e "\n\n\e[0;36m# --- Installation --- \e[39m"
 echo -e "\n\e[0;35m## Install essential packages (pacstrap) \e[39m"
 pacstrap -K /mnt ${strListPacstrapPackage}    # Install essential packages to "/mnt" (new root partition is mounted to /mnt)
 
-
 echo -e "\n\n\e[0;36m# --- Configure the system --- \e[39m"
-echo -e "\n\e[0;35m## Fstab (genfstab) \e[39m"
-genfstab -U /mnt >> /mnt/etc/fstab                       # create fstab
+echo -e "\n\e[0;35m## Fstab \e[39m"
+genfstab -U /mnt >> /mnt/etc/fstab
+modify-fstab "/mnt/etc/fstab"   # e.g.: btrfs: genfstab adds ...,subvolid=XXX,... to the mount options, which we do not want with regard to snapshots
+#create-fstab   # creating individual fstab
 
 echo "- copy necessary script/files to root-user directory on new root (/mnt/root)"
 rsync -aPhEv archinstall_autoBash_chroot.sh /mnt/root/
@@ -105,7 +122,6 @@ echo -e "- cleanup: deleting previously copied script/files in '/mnt/root'"
 rm /mnt/root/archinstall_autoBash_chroot.sh
 rm /mnt/root/archinstall_autoBash.config
 rm /mnt/root/archinstall_autoBash.shlib
-
 
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
 echo "- unmounting /mnt"
