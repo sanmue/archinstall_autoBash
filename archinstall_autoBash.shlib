@@ -320,15 +320,22 @@ function mount-partition() {                            # mounting all partition
 function create-btrfsSubvolume() {
     # Parameter 1: mount target of root subvolume (e.g. /mnt)
 
-    sudo btrfs subvolume create "${1}/@"       # want the root subvolume being the first  (-> ID 256)   # actually not necessary, just for looks
-    sudo btrfs subvolume create "${1}/@home"   # want the home subvolume being the second (-> ID 257)   # actually not necessary, just for looks
-    
+    # want the root subvolume (mount point '/'') being the first (-> ID 256) # actually not necessary, just for looks:
     for subvol in "${!btrfsSubvolLayout[@]}"; do
-        if [ ! -e "${1}/${subvol}" ]; then   # wenn Subvolume noch nicht vorhanden
+        if [ "${btrfsSubvolLayout[${subvol}]}" = "/" ] && [ ! -e "${1}/${subvol}" ]; then   # if root subvolume not already present (should be the case here)
+            echo "|__ Erstelle Subvolume '${subvol}'..."
+            btrfs subvolume create "${1}/${subvol}"                                         # e.g.: btrfs subvolume create "${1}/@"
+            break                                                                           # not necessary to search further
+        fi
+    done
+
+    # creating the other subvolumes:
+    for subvol in "${!btrfsSubvolLayout[@]}"; do
+        if [ ! -e "${1}/${subvol}" ]; then                                  # if subvolume not already present
             echo "|__ Erstelle Subvolume '${subvol}'..."
             sudo btrfs subvolume create "${1}/${subvol}"
         else
-            echo -e "\e[0;33m|__ Subvolume '${1}/${subvol}' bereits vorhanden\e[39m"                 
+            echo -e "\e[0;33m|__ Subvolume '${1}/${subvol}' bereits vorhanden\e[39m"
         fi
     done
 }
@@ -337,7 +344,7 @@ function create-fstab() {   # function not used; btrfs subvolumes get mounted an
     #if [ "${filesystemType}" = "btrfs" ] && [ "${deviceType}" = "ssd" ]; then
     if [ "${filesystemType}" = "btrfs" ]; then
         fstabPath="/mnt/etc/fstab"   # "${fstabPath}"
-        #fstabPath="/etc/fstab"   # "${fstabPath}"
+        #fstabPath="/etc/fstab"      # "${fstabPath}"
 
         # ### Bios + Uefi
 
@@ -376,8 +383,9 @@ function create-fstab4BtrfsRootPartition() {   # function not used; btrfs subvol
 
     local mountPoint="${3}"
 
-    echo "Want to make sure, that btrfs root subvolume @ is the first entry in fstab:"
-    echo "UUID=${2} / btrfs ${mountOptionBtrfs},subvol=/@ 0 0" | sudo tee -a "${1}"
+    get-rootSubvolumeName   # function reads from 'btrfsSubvolLayout' and sets current value for variable 'rootSubvolumeName' # e.g. '@'
+    echo "Want to make sure, that btrfs root subvolume '${rootSubvolumeName}' is the first entry in fstab:"   # justs for the looks
+    echo "UUID=${2} / btrfs ${mountOptionBtrfs},subvol=/${rootSubvolumeName} 0 0" | sudo tee -a "${1}"
 
     echo -e "\n*** Creating fstab entries for root partition with btrfs subvolumes"
     for subvol in "${!btrfsSubvolLayout[@]}"; do
@@ -386,7 +394,7 @@ function create-fstab4BtrfsRootPartition() {   # function not used; btrfs subvol
 
         echo "|__ creating entry for subvolume '${subvol}' with mount point '${btrfsSubvolLayout[${subvol}]}'..."
 
-        if [ ! -e  "${mountPoint}${btrfsSubvolLayout[${subvol}]}" ]; then                # if mount target (folder) NOT existing
+        if [ ! -e  "${mountPoint}${btrfsSubvolLayout[${subvol}]}" ]; then       # if mount target (folder) NOT existing
             echo -e "\e[0;33m    |__ mount target '${mountPoint}${btrfsSubvolLayout[${subvol}]}' does not exist, folder will be created...\e[39m"
             sudo mkdir -p "${mountPoint}${btrfsSubvolLayout[${subvol}]}"
         fi
@@ -410,10 +418,12 @@ function create-fstab4BtrfsRootPartition() {   # function not used; btrfs subvol
 
 function set-btrfsDefaultSubvolume() {
     # Parameter 1: path   # e.g. /mnt or /
-    
+
+    get-rootSubvolumeName   # function reads from 'btrfsSubvolLayout' and sets current value for variable 'rootSubvolumeName' # e.g. '@'
+
     if [ -d "${1}" ]; then
-        # ID 256 gen 7 top level 5 path @
-        rootSubvolumeID=$(btrfs subvolume list "${1}" | grep -w "@" | cut -d ' ' -f 2 | xargs)  # e.g. 256
+        # e.g.: ID 256 gen 7 top level 5 path @   # rootSubvolumeName: '@''
+        rootSubvolumeID=$(btrfs subvolume list "${1}" | grep -w "${rootSubvolumeName}" | cut -d ' ' -f 2 | xargs)  # e.g. 256
 
         if [ -n "${rootSubvolumeID}" ]; then
             btrfs subvolume set-default "${rootSubvolumeID}" "${1}" # e.g.: btrfs subvolume set-default "256" /mnt
@@ -425,6 +435,16 @@ function set-btrfsDefaultSubvolume() {
     else
         echo -e"\e[0;31m!!! function set-btrfsDefaultSubvolume(): Given path does not exist !!!\e[39m"
     fi
+}
+
+function get-rootSubvolumeName() {
+    for subvol in "${!btrfsSubvolLayout[@]}"; do
+        if [ "${btrfsSubvolLayout[${subvol}]}" = "/" ]; then    # if root subvolume (mount target '/')
+            rootSubvolumeName="${subvol}"
+            echo "rootSubvolumeName: '${rootSubvolumeName}'"
+            break                                               # not necessary to search further
+        fi
+    done
 }
 
 function modify-fstab() {   
