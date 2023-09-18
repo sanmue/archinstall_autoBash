@@ -70,10 +70,8 @@ enable-service
 
 echo -e "\n\e[0;35m## Creating unprivileged user accounts \e[39m"
 create-userAccount
-
 echo "- config sudo user rights (/etc/sudoers.d/sudoUser)"
 config-sudoUser
-
 
 echo -e "\n\e[0;35m## Install graphical user interface \e[39m"
 install-DesktopEnvironment

@@ -86,34 +86,25 @@ fi
 if [ ${mountPartition} = "true" ]; then       # preparation for installation   # if mounting of the partitions should be done by the script
     echo -e "\n\e[0;35m## Mounting all partitions for installation step \e[39m"
     mount-partition "${device}" "${bootMode}" "${filesystemType}" "${efiPartitionNo}" "${swapPartitionNo}" "${rootPartitionNo}" "/mnt"
+
+    echo "Current block device list (after 'mount-partition'):"
+    lsblk
 fi
-
-
-# ### TEST --------------------------------------------------------------------
-echo "Press Enter to continue"
-read -r
-# ### TEST --------------------------------------------------------------------
 
 
 echo -e "\n\n\e[0;36m# --- Installation --- \e[39m"
 #echo -e "\n\e[0;35m## Select the mirrors \e[39m"
 #TODO: custom config pacman / reflector
 
-# Not enclosing the variable in quotes is intentional; #TODO: using an array or afunction could be prettier (https://www.shellcheck.net/wiki/SC2086):
 echo -e "\n\e[0;35m## Install essential packages (pacstrap) \e[39m"
-pacstrap -K /mnt ${strListPacstrapPackage}    # Install essential packages to "/mnt" (new root partition is mounted to /mnt)
+pacstrap -K /mnt ${strListPacstrapPackage}      # Install essential packages to "/mnt" (new root partition is mounted to /mnt)
+                                                # Not enclosing the variable in quotes is intentional; #TODO: using an array or a function could be prettier (https://www.shellcheck.net/wiki/SC2086)
 
 echo -e "\n\n\e[0;36m# --- Configure the system --- \e[39m"
 echo -e "\n\e[0;35m## Fstab \e[39m"
 genfstab -U /mnt >> /mnt/etc/fstab
-modify-fstab "/mnt/etc/fstab"   # e.g.: btrfs: genfstab adds ...,subvolid=XXX,... to the mount options, which we do not want with regard to snapshots
-#create-fstab   # creating individual fstab
-
-
-# ### TEST --------------------------------------------------------------------
-echo "Press Enter to continue"
-read -r
-# ### TEST --------------------------------------------------------------------
+#create-fstab                                 # creating individual fstab
+modify-fstab "/mnt/etc/fstab"                 # e.g. btrfs: genfstab includes ...,subvolid=XXX,... in mount options, which we do not want (with regard to snapshots)
 
 
 echo "- copy necessary script/files to root-user directory on new root (/mnt/root)"
@@ -138,6 +129,13 @@ echo -e "- cleanup: deleting previously copied script/files in '/mnt/root'"
 rm /mnt/root/archinstall_autoBash_chroot.sh
 rm /mnt/root/archinstall_autoBash.config
 rm /mnt/root/archinstall_autoBash.shlib
+
+
+# ### TEST --------------------------------------------------------------------
+echo "Press Enter to continue"
+read -r
+# ### TEST --------------------------------------------------------------------
+
 
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
 echo "- unmounting /mnt"

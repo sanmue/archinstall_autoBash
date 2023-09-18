@@ -252,13 +252,6 @@ function mount-partition() {                  # mounting all partitions (btrfs: 
 
     #echo -e "efiPartitionNo ${4} \nswapPartitionNo ${5} \nrootPartitionNo ${6}"   # only for test
 
-    swapon "${1}${5}"                          # swap-partition # e.g. swapon /dev/vda2
-
-    if [ "${2}" = "Uefi" ]; then               # uefi
-        mkdir "${7}${pathEfi}"                 # e.g. /mnt/efi
-        mount "${1}${4}" "${7}${pathEfi}"      # EFI-partition # e.g. mount /dev/vda1 /mnt/efi
-    fi
-
     case "${3}" in                             # filsystem specific mount options
         "btrfs")                               # btrfs: mount every subvolume (creating related folder if necessary)
             echo "Mounting all btrfs subvolumes..."
@@ -292,9 +285,6 @@ function mount-partition() {                  # mounting all partitions (btrfs: 
                 fi
                 mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}${btrfsSubvolLayout[${subvol}]}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@home /dev/vda3 /mnt/home
             done
-
-            echo "Current block device list (after 'mount-partition'):"
-            lsblk
         ;;
 
         *)                                              # other filesystems
@@ -306,6 +296,17 @@ function mount-partition() {                  # mounting all partitions (btrfs: 
             fi
         ;;
     esac
+
+
+    # --- SWAP
+    swapon "${1}${5}"                          # swap-partition # e.g. swapon /dev/vda2
+
+
+    # --- EFI
+    if [ "${2}" = "Uefi" ]; then               # uefi
+        mkdir "${7}${pathEfi}"                 # e.g. /mnt/efi
+        mount "${1}${4}" "${7}${pathEfi}"      # EFI-partition # e.g. mount /dev/vda1 /mnt/efi
+    fi
 }
 
 function create-btrfsSubvolume() {
@@ -419,7 +420,7 @@ function set-btrfsDefaultSubvolume() {
 }
 
 function modify-fstab() {   
-    # Parameter 1: traget file    # e.g. /mnt/etc/fstab
+    # Parameter 1: target file    # e.g. /mnt/etc/fstab
 
     if [ "${filesystemType}" = "btrfs" ]; then   # e.g.: btrfs: genfstab adds ...,subvolid=XXX,... to the mount options, which we do not want with regard to snapshots
         sed -i -e 's/,subvolid=[0-9][0-9][0-9]//' "${1}"
@@ -582,7 +583,7 @@ function install-DesktopEnvironment() {
         echo "- installing additional packages"
         pacman -S --noconfirm --needed ${strListDesktopEnvPgk}
         echo "- installing additional fonts"
-        pacman -S --noconfirm --needed ${strListFontPkg}
+        if [ "${installFont}" = "true" ]; then pacman -S --noconfirm --needed ${strListFontPkg}; fi
 
     else
         echo "DesktopEnvironment will not be installed because variable installDesktopEnvironment ist set to 'false'"
