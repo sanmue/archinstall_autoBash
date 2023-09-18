@@ -65,7 +65,7 @@ if [ ${formatPartition} = "true" ]; then      # if formatting the partitions sho
 fi
 
 if [ ${mountPartition} = "true" ]; then       # this setp is actually only needed for btrfs + subvolumes # if mounting of the partitions should be done by the script
-    echo -e "\n\e[0;35m## Mounting the root file system \e[39m"
+    echo -e "\n\e[0;35m## Initial mount of root file system \e[39m"
     mount-partitionRootInitial "${device}" "${filesystemType}" "${rootPartitionNo}" "/mnt"
 
     if [ ${filesystemType} = "btrfs" ]; then  # if btrfs: create subvolumes
@@ -93,8 +93,7 @@ fi
 
 
 echo -e "\n\n\e[0;36m# --- Installation --- \e[39m"
-#echo -e "\n\e[0;35m## Select the mirrors \e[39m"
-#TODO: custom config pacman / reflector
+#TODO: custom config mirrors pacman / reflector
 
 echo -e "\n\e[0;35m## Install essential packages (pacstrap) \e[39m"
 pacstrap -K /mnt ${strListPacstrapPackage}      # Install essential packages to "/mnt" (new root partition is mounted to /mnt)

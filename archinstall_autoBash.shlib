@@ -174,9 +174,11 @@ function format-partition() {
 
         mkswap "${1}${swapPartitionNo}"                                # make swap-partition
         if [ "${4}" = "btrfs" ]; then
-            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs
+            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs, force (-f), blocksize (-n)
+        elif [ "${4}" = "ext4" ]; then
+            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"          # format root-partition, ext4, force (-F)
         else
-            mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"          # format root-partition
+            mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"             # format root-partition, other
         fi
 
     elif [ "${2}" = "Bios" ] && [ "${3}" = "mbr" ]; then               # --- Bios + mbr
@@ -186,9 +188,11 @@ function format-partition() {
         mkswap "${1}${swapPartitionNo}"                                # make swap-partition
 
         if [ "${4}" = "btrfs" ]; then
-            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs
+            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs, force (-f), blocksize (-n)
+        elif [ "${4}" = "ext4" ]; then
+            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"          # format root-partition, ext4, force (-F)
         else
-            mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"          # format root-partition
+            mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"             # format root-partition
         fi
 
     else                                                               # --- Uefi + gpt
@@ -199,9 +203,11 @@ function format-partition() {
         mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}"        # format efi-partition
         mkswap "${1}${swapPartitionNo}"                                # make swap-partition
         if [ "${4}" = "btrfs" ]; then
-            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs
+            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs, force (-f), blocksize (-n)
+            elif [ "${4}" = "ext4" ]; then
+            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"          # format root-partition, ext4, force (-F)
         else
-            mkfs."${4}" -f -L "${7}" "${1}${rootPartitionNo}"          # format root-partition
+            mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"             # format root-partition
         fi
     fi
 }
@@ -214,9 +220,9 @@ function mount-partitionRootInitial() {
 
     #echo "P1 device: ${1}; P2 filesystemType: ${2}; P3 rootPartitionNo: ${3}; P4 mount target: ${4}"
 
-    case "${2}" in                             # filsystem specific mount options
+    case "${2}" in                                      # filsystem specific mount options
         "btrfs")
-            #mountOption="-o ${mountOptionBtrfs}"   # mountOption="-o ${mountOptionBtrfs} -t ${2}"
+            #mountOption="-o ${mountOptionBtrfs}" # mountOption="-o ${mountOptionBtrfs} -t ${2}"
             #mountOption="-o ${mountOptionBtrfsInit}"
 
             echo "mount -o ${mountOptionBtrfsInit} ${1}${3} ${4}"
@@ -224,7 +230,8 @@ function mount-partitionRootInitial() {
         ;;
 
         *)
-            if [ "${mountOptionDefault}" = "" ]; then   # no options configured, let mount command go for it
+            if [ -z "${mountOptionDefault}" ]; then   # no options configured, let mount command go for it
+                echo "mount ${1}${3} ${4}"
                 #mountOption="${mountOptionDefaultInit}"
                 mount "${1}${3}" "${4}"
             else
@@ -237,11 +244,11 @@ function mount-partitionRootInitial() {
     esac
 
     #echo "mount ${mountOption} ${1}${3} ${4}"
-    #mount "${mountOption}" "${1}${3}" "${4}"   # root-partition, mount with mount options
-    #mount "${1}${3}" "${4}"                   # root-partition, fix, mount without mount options
+    #mount "${mountOption}" "${1}${3}" "${4}"           # root-partition, mount with mount options
+    #mount "${1}${3}" "${4}"                            # root-partition, fix, mount without mount options
 }
 
-function mount-partition() {                  # mounting all partitions (btrfs: subvolumes) as preparation for installation
+function mount-partition() {                            # mounting all partitions (btrfs: subvolumes) as preparation for installation
     # Parameter 1: device
     # Parameter 2: bootMode
     # Parameter 3: filesystemType
@@ -287,12 +294,13 @@ function mount-partition() {                  # mounting all partitions (btrfs: 
             done
         ;;
 
-        *)                                              # other filesystems
-            if [ "${mountOptionDefault}" = "" ]; then   # no options configured, let mount command go for it
-                mount "${1}${3}" "${7}"
+        *)                                            # other filesystems
+            if [ -z "${mountOptionDefault}" ]; then   # no options configured, let mount command go for it
+                echo "mount ${1}${6} ${7}"
+                mount "${1}${6}" "${7}"
             else                
-                echo "mount -o ${mountOptionDefault} ${1}${3} ${7}"
-                mount -o "${mountOptionDefault}" "${1}${3}" "${7}"
+                echo "mount -o ${mountOptionDefault} ${1}${6} ${7}"
+                mount -o "${mountOptionDefault}" "${1}${6}" "${7}"
             fi
         ;;
     esac
