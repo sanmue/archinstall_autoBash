@@ -71,10 +71,13 @@ if [ ${mountPartition} = "true" ]; then       # this setp is actually only neede
     if [ ${filesystemType} = "btrfs" ]; then  # if btrfs: create subvolumes
         echo -e "\n\e[0;35m## Creating btrfs subvolume layout\e[39m"
         create-btrfsSubvolume "/mnt"
-        set-btrfsDefaultSubvolume "/mnt"     # and set default subvolume
+        set-btrfsDefaultSubvolume "/mnt"      # set default subvolume: use subvolume as the root mountpoint
 
         echo "Current subolume list:"
         btrfs subvol list /mnt
+
+        echo "Current default subvolume:"
+        btrfs subvol get-default /mnt
     fi
 
     umount /mnt
@@ -84,6 +87,12 @@ if [ ${mountPartition} = "true" ]; then       # preparation for installation   #
     echo -e "\n\e[0;35m## Mounting all partitions for installation step \e[39m"
     mount-partition "${device}" "${bootMode}" "${filesystemType}" "${efiPartitionNo}" "${swapPartitionNo}" "${rootPartitionNo}" "/mnt"
 fi
+
+
+# ### TEST --------------------------------------------------------------------
+echo "Press Enter to continue"
+read -r
+# ### TEST --------------------------------------------------------------------
 
 
 echo -e "\n\n\e[0;36m# --- Installation --- \e[39m"
@@ -99,6 +108,13 @@ echo -e "\n\e[0;35m## Fstab \e[39m"
 genfstab -U /mnt >> /mnt/etc/fstab
 modify-fstab "/mnt/etc/fstab"   # e.g.: btrfs: genfstab adds ...,subvolid=XXX,... to the mount options, which we do not want with regard to snapshots
 #create-fstab   # creating individual fstab
+
+
+# ### TEST --------------------------------------------------------------------
+echo "Press Enter to continue"
+read -r
+# ### TEST --------------------------------------------------------------------
+
 
 echo "- copy necessary script/files to root-user directory on new root (/mnt/root)"
 rsync -aPhEv archinstall_autoBash_chroot.sh /mnt/root/

@@ -261,23 +261,39 @@ function mount-partition() {                  # mounting all partitions (btrfs: 
 
     case "${3}" in                             # filsystem specific mount options
         "btrfs")                               # btrfs: mount every subvolume (creating related folder if necessary)
-            echo "Mounting btrfs subvolumes..."
-
+            echo "Mounting all btrfs subvolumes..."
+            
+            echo "- first mounting root subvolume to '${7}'"   # or creating mount targets for the other subvolumes will fail + can not be mounted
             for subvol in "${!btrfsSubvolLayout[@]}"; do
-                if [ "${subvol}" = "@" ]; then                             # special handling for root subvolume @; no noeed to create root folder '/' on /mnt
-                    mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}"   # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@ /dev/vda3 /mnt
+                if [ "${btrfsSubvolLayout[${subvol}]}" = "/" ]; then
+                    echo "mount -o ${mountOptionBtrfs},subvol=${subvol} ${1}${6} ${7}"
+                    mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}"
+                    #mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}${btrfsSubvolLayout[${subvol}]}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@ /dev/vda3 /mnt/
+                    break   # no need to go through the rest of the hashtable, if root subvolume is found
+                fi
+            done
+
+            echo "- creating mount targets for subvolumes, if they do not exist..."
+            for subvol in "${!btrfsSubvolLayout[@]}"; do
+                if [ "${subvol}" = "@" ]; then                             # special handling for root subvolume @; no need to create root folder '/'
                     continue
                 fi
 
-                if [ ! -e  "${7}${btrfsSubvolLayout[${subvol}]}" ]; then   # if mount target (folder) NOT existing
+                if [ ! -e  "${7}${btrfsSubvolLayout[${subvol}]}" ]; then   # if mount target (folder) does NOT exist
                     echo -e "\e[0;33m    |__ mount target '${7}${btrfsSubvolLayout[${subvol}]}' does not exist, folder will be created...\e[39m" # e.g. /mnt/home
-                    sudo mkdir -p "${7}${btrfsSubvolLayout[${subvol}]}"
+                    mkdir -p "${7}${btrfsSubvolLayout[${subvol}]}"
                 fi
-
-                mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}${btrfsSubvolLayout[${subvol}]}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@ /dev/vda3 /mnt/home
             done
 
-            echo "Current block device list:"
+            echo "- mounting subvolumes..."
+            for subvol in "${!btrfsSubvolLayout[@]}"; do
+                if [ "${subvol}" = "@" ]; then                             # special handling for root subvolume @, already mounted (very first step)
+                    continue
+                fi
+                mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}${btrfsSubvolLayout[${subvol}]}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@home /dev/vda3 /mnt/home
+            done
+
+            echo "Current block device list (after 'mount-partition'):"
             lsblk
         ;;
 
@@ -295,8 +311,8 @@ function mount-partition() {                  # mounting all partitions (btrfs: 
 function create-btrfsSubvolume() {
     # Parameter 1: mount target of root subvolume (e.g. /mnt)
 
-    sudo btrfs subvolume create "${1}/@"       # want the root subvolume being the first  (-> ID 256)
-    sudo btrfs subvolume create "${1}/@home"   # want the home subvolume being the second (-> ID 257)
+    sudo btrfs subvolume create "${1}/@"       # want the root subvolume being the first  (-> ID 256)   # actually not necessary, just for looks
+    sudo btrfs subvolume create "${1}/@home"   # want the home subvolume being the second (-> ID 257)   # actually not necessary, just for looks
     
     for subvol in "${!btrfsSubvolLayout[@]}"; do
         if [ ! -e "${1}/${subvol}" ]; then   # wenn Subvolume noch nicht vorhanden
