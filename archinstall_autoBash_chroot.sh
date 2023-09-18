@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -x   # enable debug mode
+#set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash_chroot.sh
