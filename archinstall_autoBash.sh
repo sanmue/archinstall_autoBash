@@ -131,12 +131,6 @@ rm /mnt/root/archinstall_autoBash.config
 rm /mnt/root/archinstall_autoBash.shlib
 
 
-# ### TEST --------------------------------------------------------------------
-echo "Press Enter to continue"
-read -r
-# ### TEST --------------------------------------------------------------------
-
-
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
 echo "- unmounting /mnt"
 umount -R /mnt

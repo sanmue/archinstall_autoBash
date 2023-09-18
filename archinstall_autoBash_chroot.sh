@@ -54,12 +54,6 @@ echo -e "\n\e[0;35m## Boot loader\e[39m"
 install-bootloader
 
 
-# ### TEST --------------------------------------------------------------------
-echo "Press Enter to continue"
-read -r
-# ### TEST --------------------------------------------------------------------
-
-
 # --- Post-installation (original position: after reboot) - ! order changed, was moved forward one position compared to the wiki ! ---
 echo -e "\n\n\e[0;36m# --- Post-installation part of Arch install wiki (original position: after reboot ! order changed, was moved forward one position compared to the wiki) --- \e[39m"
 echo -e "\n\e[0;35m## Installing additional packages \e[39m"
