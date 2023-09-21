@@ -102,8 +102,10 @@ pacstrap -K /mnt ${strListPacstrapPackage}      # Install essential packages to 
 
 echo -e "\n\n\e[0;36m# --- Configure the system --- \e[39m"
 echo -e "\n\e[0;35m## Fstab \e[39m"
+echo "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 #create-fstab                                 # creating individual fstab
+echo "Modify fstab..."
 modify-fstab "/mnt/etc/fstab"                 # e.g. btrfs: genfstab includes ...,subvolid=XXX,... in mount options, which we do not want (with regard to snapshots)
 
 
@@ -135,11 +137,6 @@ if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ]; then
     echo -e "\n\n\e[0;36m# Configure snapper for root subvolume \e[39m"
     config-snapperLiveEnv "${snapperConfigName_root}" "/mnt" "/"    # '/mnt' = current mount path of (root) subvolume, /' = final 'real' path of (root) subvolume to create the config for
 fi
-
-# ### TEST --------------------------------------------------------------------
-echo "Press Enter to continue"
-read -r
-# ### TEST --------------------------------------------------------------------
 
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
 echo "- unmounting /mnt"

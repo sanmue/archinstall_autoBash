@@ -661,11 +661,12 @@ function install-additionalPackages() {
         #pacmman -S -noconfirm --needed spice-vdagent   #TODO: only if the machine is a virtual machine: clipboard sharing Guest<->Host
     fi
 
-    #pacman -S --noconfirm --needed "${strListAdditionalPkg_zsh}"
-    #TODO: if zsh: echo "${zshSyntaxConf}" >> ~/.zshrc
+    #pacman -S --noconfirm --needed "${strListAdditionalPkg_zsh}"   #TODO
+    #echo "${zshSyntaxConf}" >> $userdir/.zshrc                     #TODO
 }
 
 function enable-service() {
+    echo "- enabling services ..."
     for service in "${arrService[@]}"; do
         systemctl enable "${service}"
     done
@@ -683,14 +684,14 @@ function install-DesktopEnvironment() {
             ;;
 
             *)
-                echo "TOOD: implement case - default-Zweig: desktopEnvironmentName"
+                echo -e "\e[0;33mdefault case, function 'install-DesktopEnvironment' - '${desktopEnvironmentName}' not available\e[39m"   # TOOD: add more desktop environments
             ;;
         esac
 
         echo "- installing additional packages"
         pacman -S --noconfirm --needed ${strListDesktopEnvPgk}
     else
-        echo "DesktopEnvironment will not be installed because variable installDesktopEnvironment ist set to 'false'"
+        echo "No DesktopEnvironment will be installed because variable 'installDesktopEnvironment' is set to 'false'"
     fi
 }
 
