@@ -249,6 +249,7 @@ function mount-partitionRootInitial() {
 }
 
 function mount-partition() {                            # mounting all partitions (btrfs: subvolumes) as preparation for installation
+                                                        # https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
     # Parameter 1: device
     # Parameter 2: bootMode
     # Parameter 3: filesystemType
@@ -282,6 +283,10 @@ function mount-partition() {                            # mounting all partition
                 if [ ! -e  "${7}${btrfsSubvolLayout[${subvol}]}" ]; then   # if mount target (folder) does NOT exist
                     echo -e "\e[0;33m    |__ mount target '${7}${btrfsSubvolLayout[${subvol}]}' does not exist, folder will be created...\e[39m" # e.g. /mnt/home
                     mkdir -p "${7}${btrfsSubvolLayout[${subvol}]}"
+
+                    if [ "${7}${btrfsSubvolLayout[${subvol}]}" = "${7}${snapperSnapshotFolder}" ]; then   # e.g.: if /mnt/.snapshots
+                        chmod -R 750 "${7}${btrfsSubvolLayout[${subvol}]}" && chown -R :wheel "${7}${btrfsSubvolLayout[${subvol}]}"
+                    fi
                 fi
             done
 
@@ -317,25 +322,25 @@ function mount-partition() {                            # mounting all partition
     fi
 }
 
-function create-btrfsSubvolume() {
+function create-btrfsSubvolume() {             # https://wiki.archlinux.org/title/Btrfs#Subvolumes
     # Parameter 1: mount target of root subvolume (e.g. /mnt)
 
     # want the root subvolume (mount point '/'') being the first (-> ID 256) # actually not necessary, just for looks:
     for subvol in "${!btrfsSubvolLayout[@]}"; do
-        if [ "${btrfsSubvolLayout[${subvol}]}" = "/" ] && [ ! -e "${1}/${subvol}" ]; then   # if root subvolume not already present (should be the case here)
-            echo "|__ Erstelle Subvolume '${subvol}'..."
-            btrfs subvolume create "${1}/${subvol}"                                         # e.g.: btrfs subvolume create "${1}/@"
+        if [ "${btrfsSubvolLayout[${subvol}]}" = "/" ] && [ ! -e "${1}/${subvol}" ]; then   # if root subvolume NOT already present (should be the case here)
+            echo "|__ creating subvolume '${subvol}'..."
+            btrfs subvolume create "${1}/${subvol}"                                         # e.g.: btrfs subvolume create "/mnt/@"
             break                                                                           # not necessary to search further
         fi
     done
 
     # creating the other subvolumes:
     for subvol in "${!btrfsSubvolLayout[@]}"; do
-        if [ ! -e "${1}/${subvol}" ]; then                                  # if subvolume not already present
-            echo "|__ Erstelle Subvolume '${subvol}'..."
+        if [ ! -e "${1}/${subvol}" ]; then                                                  # if subvolume NOT already present
+            echo "|__ creating subvolume '${subvol}'..."
             sudo btrfs subvolume create "${1}/${subvol}"
         else
-            echo -e "\e[0;33m|__ Subvolume '${1}/${subvol}' bereits vorhanden\e[39m"
+            echo -e "\e[0;33m|__ Subvolume '${1}/${subvol}' already present\e[39m"
         fi
     done
 }
@@ -455,7 +460,80 @@ function modify-fstab() {
     fi
 }
 
-function uncomment-locales() {
+function config-snapper() {   # should work after finished install + reboot, but not in chroot-environment (and when no config for root + subvol .snapshots #TODO: !! not tested !! )
+    # https://wiki.archlinux.org/title/Snapper
+
+    # Parameter 1: name for the config      (e.g. "root" ("${snapperConfigName_root}"))
+    # Parameter 2: path to the subvolume    (e.g. '/' for the path to root subvolume)
+
+    local configName="${1}"
+    local pathToSubvolume="${2}"
+
+    pacman -Sy --needed --noconfirm snapper inotify-tools           # just to be sure, should already be installed (if 'install-additionalPackages' was called in a step before)
+    pacman -S --needed --noconfirm snap-pac                         # Pacman hooks that use snapper to create pre/post btrfs snapshots like openSUSE's YaST
+    if [ "${bootloader}" = "grub" ]; then pacman -S --needed --noconfirm grub-btrfs; fi # Include btrfs snapshots in GRUB boot options # just to be sure, should already be installed (if 'install-additionalPackages' was called in a step before)
+
+    snapper -c "${configName}" create-config "${pathToSubvolume}"   # among others creates a subvolume at "/path/to/subvolume/.snapshots" (which should already exist when using the startconfig in 'btrfsSubvolLayout')
+
+    for snapperConfKey in "${!snapperSnapshotConf[@]}"; do          # configuring the snapper config '$configName'
+        snapper -c "${configName}" set-config "${snapperConfKey}=${snapperSnapshotConf[${snapperConfKey}]}"   # e.g.: snapper -c root set-config "ALLOW_GROUPS=wheel"
+    done
+
+    #systemctl enable snapper-timeline.timer                        # I do not want timeline snapshots; see 'snap-pac' #TODO: config option for creating timeline snapshot (too)
+    systemctl enable snapper-cleanup.timer                          # just to be sure, should also be enabled later when calling 'enable-service' # periodically clean up older snapshots
+    if [ "${bootloader}" = "grub" ]; then systemctl enable grub-btrfsd.service; fi  # Include btrfs snapshots in GRUB boot options # just to be sure # Regenerate grub-btrfs.cfg
+}
+
+function config-snapperLiveEnv() {   # when booted in live environment
+    # https://wiki.archlinux.org/title/Snapper
+    # https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
+
+    # Parameter 1: name for the config                      (e.g. "root" ("${snapperConfigName_root}"))
+    # Parameter 2: current (temp.) path to the subvolume    (e.g. '/mnt' for the path to root subvolume)
+    # Parameter 3: path to the subvolume ("real" system)    (e.g. '/' for the path to root subvolume)
+
+    local configName="${1}"
+    local pathToSubvolume_tmp="${2}"
+    local pathToSubvolume_real="${3}"
+
+    # install needed packages in live environment:
+    pacman -Sy --needed --noconfirm snapper inotify-tools               # this is just for/in Live Environment # 'strListAdditionalPkg' already contains/installed the needed packages (snapper inotify-tools snap-pac grub-btrfs)
+
+    # unmount subvolume for snapshots (-> 'btrfsSubvolLayout')
+    umount "${pathToSubvolume_tmp}${snapperSnapshotFolder}"             # e.g. /mnt/.snapshots # https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
+
+    # delete the ''.snaphots' folder (or the snapper ... creat-config ... in next step fails)
+    rm -rf "${pathToSubvolume_tmp}${snapperSnapshotFolder}"             # e.g. '/mnt/.snapshots' # 'snapper ... create-config ...' wants to create the snapshot folder and fails if already present
+
+    # create snapper config file
+    snapper -c "${configName}" create-config "${pathToSubvolume_tmp}"   # e.g. snapper -c root create-config /mnt # (besides config files) creates a subvolume '.snapshots' at "/path/to/subvolume" 
+                                                                        #                                                                  (which should already exist when using the startconfig in 'btrfsSubvolLayout')
+    # remove the btrfs subvolume '.snapshots' (and the folder /mnt/.snapshots); wo already have a subvolume e.g '@snapshots' (-> 'btrfsSubvolLayout')
+    rm -rf "${pathToSubvolume_tmp}${snapperSnapshotFolder}"
+
+    # ... that means we (only) have to create the folder again (e.g. /mnt/.snapshots) and give it again the access-rights + owner (as initially in function 'mount-partition'):
+    mkdir "${pathToSubvolume_tmp}${snapperSnapshotFolder}"
+    chmod -R 750 "${pathToSubvolume_tmp}${snapperSnapshotFolder}" && chown -R :wheel "${pathToSubvolume_tmp}${snapperSnapshotFolder}"
+    # mount -o subvol=@snapshots /dev/vda3 /mnt/.snapshots              # not necessary to mount again, everything mounted beyond '/mnt' will be unmounted in the next (last) step anyway
+
+    for snapperConfKey in "${!snapperSnapshotConf[@]}"; do              # configuring the snapper config '$configName'
+        snapper -c "${configName}" set-config "${snapperConfKey}=${snapperSnapshotConf[${snapperConfKey}]}"   # e.g.: snapper -c root set-config "ALLOW_GROUPS=wheel"
+    done
+
+    # correct config for 'configName': 'pathToSubvolume_tmp' to 'pathToSubvolume_real'   # e.g. '/mnt' to '/' in "/etc/snapper/configs/${configName}"
+    sed -i "s|${pathToSubvolume_tmp}|${pathToSubvolume_real}|g" "/etc/snapper/configs/${configName}"   # e.g.: sed -i "s|/mnt|/|g" /etc/snapper/configs/root
+
+    # copy the (corrected) snapper config files created in the Live Environment to their place in the mounted root subvolume
+    mkdir -p "${pathToSubvolume_tmp}/etc/snapper/configs" && cp "/etc/snapper/configs/${configName}" "${pathToSubvolume_tmp}/etc/snapper/configs/"
+    mkdir -p "${pathToSubvolume_tmp}/etc/conf.d" && cp "/etc/conf.d/snapper" "${pathToSubvolume_tmp}/etc/conf.d/"
+
+    # 'arrService' should alerady contain these services (for "real" system):
+    # #systemctl enable snapper-timeline.timer                          # I do not want timeline snapshots; see 'snap-pac' #TODO: config option for creating timeline snapshot (too)
+    #systemctl enable snapper-cleanup.timer                             # just to be sure, should also be enabled later when calling 'enable-service' # periodically clean up older snapshots
+    #if [ "${bootloader}" = "grub" ]; then systemctl enable grub-btrfsd.service; fi  # just to be sure # Regenerate grub-btrfs.cfg
+}
+
+function modify-locales() {
     # Parameter 1: string with the items, seperated by space # Problem: items itsels partially have spaces inside itself (e.g. "en_US.UTF-8 UTF-8") -> no good dilimeter available
     # Parameter 2: path to the file in which the substitution will take place (should be "/etc/locale.gen")
 
@@ -477,13 +555,13 @@ function set-timezone() {
 
 function set-locales() {
     echo "- uncomment needed locales in '/etc/locale.gen'"
-    uncomment-locales "${arrLocalegen[*]}" /etc/locale.gen    # uncomment needed locales in "/etc/locale.gen"
+    modify-locales "${arrLocalegen[*]}" /etc/locale.gen             # uncomment needed locales in "/etc/locale.gen"
     echo "- generate the locales"
-    locale-gen                                                # Generate the locales
+    locale-gen                                                      # Generate the locales
     echo "- creating the '/etc/locale.conf' file and setting the LANG variable"
-    echo "LANG=${defaultLangPreferred}" >> /etc/locale.conf   # set the LANG variable   # localectl --no-convert set-keymap de-latin1
+    echo "LANG=${defaultLangPreferred}" >> /etc/locale.conf         # set the LANG variable   # localectl --no-convert set-keymap de-latin1
     echo "- make settings for the console keyboard layout persistent (/etc/vconsole.conf)"
-    echo "KEYMAP=${consoleKeyboardLayout}" >> /etc/vconsole.conf   # make settings for the console keyboard layout persistent
+    echo "KEYMAP=${consoleKeyboardLayout}" >> /etc/vconsole.conf    # make settings for the console keyboard layout persistent
 }
 
 function config-network() {
@@ -498,7 +576,7 @@ function config-network() {
 
     echo "- installing network management software and enabling its systemd unit"
     #pacman -S --noconfirm --needed "${strListNetworkPkg}"             # installing network management software and enabling its systemd unit so that it starts at boot
-    pacman -S --noconfirm --needed ${strListNetworkPkg}                # installing network management software and enabling its systemd unit so that it starts at boot
+    pacman -S --noconfirm --needed ${strListNetworkPkg}             # installing network management software and enabling its systemd unit so that it starts at boot
     systemctl enable NetworkManager
 }
 
@@ -564,8 +642,9 @@ function install-bootloader() {
 }
 
 function install-additionalPackages() {
-    echo "- installing configured standard, print, firewall, conflicting packages"
+    echo "- installing configured packages: standard, print, firewall, conflicting"
     pacman -S --noconfirm --needed ${strListAdditionalPkg}
+
     pacman -S --noconfirm --needed ${strListAdditionalPkg_print}
     pacman -S --noconfirm --needed ${strListAdditionalPkg_firewall}
     #pacman -S --noconfirm ${strListAdditionalPkg_PowerMgmt}  #TODO: query if corresponding variable is set -> install
@@ -610,9 +689,6 @@ function install-DesktopEnvironment() {
 
         echo "- installing additional packages"
         pacman -S --noconfirm --needed ${strListDesktopEnvPgk}
-        echo "- installing additional fonts"
-        if [ "${installFont}" = "true" ]; then pacman -S --noconfirm --needed ${strListFontPkg}; fi
-
     else
         echo "DesktopEnvironment will not be installed because variable installDesktopEnvironment ist set to 'false'"
     fi

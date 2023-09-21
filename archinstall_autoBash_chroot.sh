@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -x   # enable debug mode
+#set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash_chroot.sh
@@ -41,7 +41,7 @@ set-locales
 echo -e "\n\e[0;35m## Network configuration \e[39m"
 config-network
 
-#TODO Initramfs: For LVM, system encryption or RAID, modify mkinitcpio.conf(5) and recreate the initramfs image
+#TODO: Initramfs: For LVM, system encryption or RAID, modify mkinitcpio.conf(5) and recreate the initramfs image
 # mkinitcpio -P
 
 echo -e "\n\e[0;35m## Root password \e[39m"
@@ -54,7 +54,7 @@ echo -e "\n\e[0;35m## Boot loader\e[39m"
 install-bootloader
 
 
-# --- Post-installation (original position: after reboot) - ! order changed, was moved forward one position compared to the wiki ! ---
+# --- Post-installation (original position in wiki: after reboot) - ! order changed, was moved forward one position compared to the wiki ! ---
 echo -e "\n\n\e[0;36m# --- Post-installation part of Arch install wiki (original position: after reboot ! order changed, was moved forward one position compared to the wiki) --- \e[39m"
 echo -e "\n\e[0;35m## Installing additional packages \e[39m"
 install-additionalPackages
@@ -64,8 +64,11 @@ enable-service
 
 echo -e "\n\e[0;35m## Creating unprivileged user accounts \e[39m"
 create-userAccount
-echo "- config sudo user rights (/etc/sudoers.d/sudoUser)"
+echo "- config sudo user rights"
 config-sudoUser
 
 echo -e "\n\e[0;35m## Install graphical user interface \e[39m"
 install-DesktopEnvironment
+
+echo -e "\n\e[0;35m## Install additional fonts \e[39m"
+if [ "${installFont}" = "true" ]; then pacman -S --noconfirm --needed ${strListFontPkg}; fi

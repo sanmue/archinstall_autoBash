@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -x   # enable debug mode
+#set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.sh
@@ -36,14 +36,14 @@ echo -e "\n\e[0;35m## Setting console keyboard layout and terminal font \e[39m"
 loadkeys "${consoleKeyboardLayout}"    # set console keyboard layout  (temporary for current session)
 setfont "${terminalFont}"              # set terminal font (temporary for current session)
 
-#TODO Verify the boot mode
-#TODO Check internet connection
+#TODO: Verify the boot mode
+#TODO: Check internet connection
 
 echo -e "\n\e[0;35m## Update the system clock (set-timezone) \e[39m"
 timedatectl set-timezone "${timezone}" # set timezone
 #timedatectl status                    # show timezone settings
 
-#TODO Check for existing partition(s) (would be overwritten via function "partition-disk")
+#TODO: Check for existing partition(s) (would be overwritten via function "partition-disk")
 
 echo "- show available block devices:"
 echo "${initialLsblk}"                 # show available block devices at script start, except type 'rom' or 'loop' or 'airoot'
@@ -99,6 +99,7 @@ echo -e "\n\e[0;35m## Install essential packages (pacstrap) \e[39m"
 pacstrap -K /mnt ${strListPacstrapPackage}      # Install essential packages to "/mnt" (new root partition is mounted to /mnt)
                                                 # Not enclosing the variable in quotes is intentional; #TODO: using an array or a function could be prettier (https://www.shellcheck.net/wiki/SC2086)
 
+
 echo -e "\n\n\e[0;36m# --- Configure the system --- \e[39m"
 echo -e "\n\e[0;35m## Fstab \e[39m"
 genfstab -U /mnt >> /mnt/etc/fstab
@@ -129,6 +130,16 @@ rm /mnt/root/archinstall_autoBash_chroot.sh
 rm /mnt/root/archinstall_autoBash.config
 rm /mnt/root/archinstall_autoBash.shlib
 
+
+if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ]; then
+    echo -e "\n\n\e[0;36m# Configure snapper for root subvolume \e[39m"
+    config-snapperLiveEnv "${snapperConfigName_root}" "/mnt" "/"    # '/mnt' = current mount path of (root) subvolume, /' = final 'real' path of (root) subvolume to create the config for
+fi
+
+# ### TEST --------------------------------------------------------------------
+echo "Press Enter to continue"
+read -r
+# ### TEST --------------------------------------------------------------------
 
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
 echo "- unmounting /mnt"
