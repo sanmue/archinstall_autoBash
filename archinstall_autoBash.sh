@@ -33,13 +33,15 @@ source archinstall_autoBash.shlib    # including the separate file containing th
 
 echo -e "\n\n\e[0;36m# --- Pre-installation --- \e[39m"
 echo -e "\n\e[0;35m## Setting console keyboard layout and terminal font \e[39m"
-loadkeys "${consoleKeyboardLayout}"    # set console keyboard layout  (temporary for current session)
+echo "- setting console keyboard to: '${consoleKeyboardLayout}' (temporary for current session)"
+loadkeys "${consoleKeyboardLayout}"    # set console keyboard layout (temporary for current session)
+echo "- setting terminal font to: '${terminalFont}' (temporary for current session)"
 setfont "${terminalFont}"              # set terminal font (temporary for current session)
 
-#TODO: Verify the boot mode
 #TODO: Check internet connection
 
 echo -e "\n\e[0;35m## Update the system clock (set-timezone) \e[39m"
+echo "- setting timezone to: '${timezone}'"
 timedatectl set-timezone "${timezone}" # set timezone
 #timedatectl status                    # show timezone settings
 
@@ -99,13 +101,12 @@ echo -e "\n\e[0;35m## Install essential packages (pacstrap) \e[39m"
 pacstrap -K /mnt ${strListPacstrapPackage}      # Install essential packages to "/mnt" (new root partition is mounted to /mnt)
                                                 # Not enclosing the variable in quotes is intentional; #TODO: using an array or a function could be prettier (https://www.shellcheck.net/wiki/SC2086)
 
-
 echo -e "\n\n\e[0;36m# --- Configure the system --- \e[39m"
 echo -e "\n\e[0;35m## Fstab \e[39m"
-echo "Generating fstab..."
+echo "- generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 #create-fstab                                 # creating individual fstab
-echo "Modify fstab..."
+echo "- modify fstab..."
 modify-fstab "/mnt/etc/fstab"                 # e.g. btrfs: genfstab includes ...,subvolid=XXX,... in mount options, which we do not want (with regard to snapshots)
 
 
@@ -124,10 +125,10 @@ echo -e "\n\e[0;35m## Chroot \e[39m"
 
 echo "- starting 'archinstall_autoBash_chroot.sh' (arch-chroot)"
 arch-chroot /mnt /usr/bin/env bash -c "su - -c /root/archinstall_autoBash_chroot.sh"
-echo -e "\e[0;35m- coming back from chroot\e[39m\n\n"
+echo -e "\e[0;33m- coming back from chroot\e[39m\n\n"
 
 # cleanup:
-echo -e "- cleanup: deleting previously copied script/files in '/mnt/root'"
+echo "- cleanup: deleting previously copied script/files in '/mnt/root'"
 rm /mnt/root/archinstall_autoBash_chroot.sh
 rm /mnt/root/archinstall_autoBash.config
 rm /mnt/root/archinstall_autoBash.shlib

@@ -16,7 +16,7 @@
 # ------------------
 echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.config' \e[39m"
 # shellcheck source=archinstall_autoBash.config
-source archinstall_autoBash.config   # including the separate file containing the config / variables used by the script
+source archinstall_autoBash.config      # including the separate file containing the config / variables used by the script
 
 
 # ---------
@@ -24,7 +24,7 @@ source archinstall_autoBash.config   # including the separate file containing th
 # ---------
 echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.shlib' \e[39m"
 # shellcheck source=archinstall_autoBash.shlib
-source archinstall_autoBash.shlib    # including the separate file containing the functions used by the script
+source archinstall_autoBash.shlib       # including the separate file containing the functions used by the script
 
 
 # ----
@@ -64,7 +64,6 @@ enable-service
 
 echo -e "\n\e[0;35m## Creating unprivileged user accounts \e[39m"
 create-userAccount
-echo "- config sudo user rights"
 config-sudoUser
 
 echo -e "\n\e[0;35m## Install graphical user interface \e[39m"

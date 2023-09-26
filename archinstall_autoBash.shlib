@@ -604,6 +604,7 @@ function create-userAccount() {
 }
 
 function config-sudoUser() {
+    echo "- config sudo user rights"
     for userId in "${arrSudoUser[@]}"; do
         #echo "${userId} ALL=(ALL) ALL" >> "/etc/sudoers.d/sudoUser"
         usermod -aG wheel "${userId}"   # if btrfs + snapper snapshot-folder '.snapshots' gets chown :wheel (in my ansible playbook, Repo 'ansible_workstation')
