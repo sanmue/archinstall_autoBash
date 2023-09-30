@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#set -x   # enable debug mode
+set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.sh
@@ -47,10 +47,8 @@ timedatectl set-timezone "${timezone}" # set timezone
 
 #TODO: Check for existing partition(s) (would be overwritten via function "partition-disk")
 
-echo "- show available block devices:"
-echo "${initialLsblk}"                 # show available block devices at script start, except type 'rom' or 'loop' or 'airoot'
 echo "- checking if device path '${device}' is valid"
-check-devicePath "${device}"           # check if given device path is valid
+check-devicePath "${device}"           # check if configured device path is valid
 
 if [ ${partitionDisk} = "true" ]; then        # if partitioning the device should be executed by the script
     echo -e "\n\e[0;35m## Partitioning the disk '${device}'...\e[39m"
@@ -138,6 +136,7 @@ if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ]; then
     echo -e "\n\n\e[0;36m# Configure snapper for root subvolume \e[39m"
     config-snapperLiveEnv "${snapperConfigName_root}" "/mnt" "/"    # '/mnt' = current mount path of (root) subvolume, /' = final 'real' path of (root) subvolume to create the config for
 fi
+
 
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
 echo "- unmounting /mnt"
