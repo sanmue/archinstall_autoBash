@@ -171,8 +171,8 @@ function format-partition() {
 
     if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then                 # --- Bios + gpt
         # Partition No 1: empty
-        set-PartitionNo "swap" "2"
-        set-PartitionNo "root" "3"
+        set-partitionNo "swap" "2"
+        set-partitionNo "root" "3"
 
         mkswap "${1}${swapPartitionNo}"                                # make swap-partition
         if [ "${4}" = "btrfs" ]; then
@@ -184,8 +184,8 @@ function format-partition() {
         fi
 
     elif [ "${2}" = "Bios" ] && [ "${3}" = "mbr" ]; then               # --- Bios + mbr
-        set-PartitionNo "swap" "1"
-        set-PartitionNo "root" "2"
+        set-partitionNo "swap" "1"
+        set-partitionNo "root" "2"
 
         mkswap "${1}${swapPartitionNo}"                                # make swap-partition
 
@@ -198,9 +198,9 @@ function format-partition() {
         fi
 
     else                                                               # --- Uefi + gpt
-        set-PartitionNo "efi" "1"
-        set-PartitionNo "swap" "2"
-        set-PartitionNo "root" "3"
+        set-partitionNo "efi" "1"
+        set-partitionNo "swap" "2"
+        set-partitionNo "root" "3"
 
         mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}"        # format efi-partition
         mkswap "${1}${swapPartitionNo}"                                # make swap-partition
@@ -214,7 +214,7 @@ function format-partition() {
     fi
 }
 
-function set-PartitionNo() {
+function set-partitionNo() {
     # Parameter 1: type                     # e.g. "efi", "swap" or "root"
     # Parameter 2: partitionNo              # e.g. "1"
                                             # https://wiki.archlinux.org/title/Device_file#Partition
@@ -240,7 +240,7 @@ function set-PartitionNo() {
         ;;
 
         *)
-            echo -e "\e[0;31m case default - function 'set-PartitionNo': type not found, exit. \e[39m"
+            echo -e "\e[0;31m case default - function 'set-partitionNo': type not found, exit. \e[39m"
             exit 1
         ;;
     esac
