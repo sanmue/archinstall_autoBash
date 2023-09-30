@@ -22,7 +22,7 @@ function check-bashVersion() {
 function check-devicePath() {
     # Parameter 1: device path (e.g. /dev/vda)
 
-    echo "Checking if '${1}' ist available"
+    echo "Checking if '${1}' is available"
     if [ ! -b "${1}" ]; then   # if ${device} ("file") not available
         echo -e "\e[0;33m!!! '${1}' not found !!!\e[39m \nExit the script"
         exit 1
@@ -167,10 +167,12 @@ function format-partition() {
     # Parameter 8: partitionLabelEfi
     # Parameter 9: partitionLabelHome
 
+    #TODO: check path of partition device name
+
     if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then                 # --- Bios + gpt
         # Partition No 1: empty
-        swapPartitionNo=2
-        rootPartitionNo=3
+        set-PartitionNo "swap" "2"
+        set-PartitionNo "root" "3"
 
         mkswap "${1}${swapPartitionNo}"                                # make swap-partition
         if [ "${4}" = "btrfs" ]; then
@@ -182,8 +184,8 @@ function format-partition() {
         fi
 
     elif [ "${2}" = "Bios" ] && [ "${3}" = "mbr" ]; then               # --- Bios + mbr
-        swapPartitionNo=1
-        rootPartitionNo=2
+        set-PartitionNo "swap" "1"
+        set-PartitionNo "root" "2"
 
         mkswap "${1}${swapPartitionNo}"                                # make swap-partition
 
@@ -196,9 +198,9 @@ function format-partition() {
         fi
 
     else                                                               # --- Uefi + gpt
-        efiPartitionNo=1
-        swapPartitionNo=2
-        rootPartitionNo=3
+        set-PartitionNo "efi" "1"
+        set-PartitionNo "swap" "2"
+        set-PartitionNo "root" "3"
 
         mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}"        # format efi-partition
         mkswap "${1}${swapPartitionNo}"                                # make swap-partition
@@ -210,6 +212,38 @@ function format-partition() {
             mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"             # format root-partition
         fi
     fi
+}
+
+function set-PartitionNo() {
+    # Parameter 1: type                     # e.g. "efi", "swap" or "root"
+    # Parameter 2: partitionNo              # e.g. "1"
+                                            # https://wiki.archlinux.org/title/Device_file#Partition
+    local separator="p"                     # if device name ends with a number, drive name and partition number is separated with the letter "p"
+
+    if [[ "${device}" = *[0-9] ]]; then     # if device name ends with a number
+        local partitionNo="${separator}${2}"
+    else
+        local partitionNo="${2}"
+    fi
+
+    case "${1}" in
+        "efi")
+            efiPartitionNo="${partitionNo}"
+        ;;
+
+        "swap")
+            swapPartitionNo="${partitionNo}"
+        ;;
+
+        "root")
+            rootPartitionNo="${partitionNo}"
+        ;;
+
+        *)
+            echo -e "\e[0;31m case default - function 'set-PartitionNo': type not found, exit. \e[39m"
+            exit 1
+        ;;
+    esac
 }
 
 function mount-partitionRootInitial() {
