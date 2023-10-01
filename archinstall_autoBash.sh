@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -x   # enable debug mode
+#set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.sh
@@ -112,6 +112,7 @@ echo "- copy necessary script/files to root-user directory on new root (/mnt/roo
 rsync -aPhEv archinstall_autoBash_chroot.sh /mnt/root/
 rsync -aPhEv archinstall_autoBash.config /mnt/root/
 rsync -aPhEv archinstall_autoBash.shlib /mnt/root/
+rsync -aPhEv "${fileDeviceName}" /mnt/root/
 # make them executable:
 chmod +x /mnt/root/archinstall_autoBash_chroot.sh
 chmod +x /mnt/root/archinstall_autoBash.config
@@ -130,6 +131,7 @@ echo "- cleanup: deleting previously copied script/files in '/mnt/root'"
 rm /mnt/root/archinstall_autoBash_chroot.sh
 rm /mnt/root/archinstall_autoBash.config
 rm /mnt/root/archinstall_autoBash.shlib
+rm "/mnt/root/${fileDeviceName}"
 
 
 if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ]; then
