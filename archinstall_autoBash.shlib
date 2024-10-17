@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154
+
+# set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.shlib
@@ -48,7 +51,7 @@ function erase-device() {
         echo -e "\e[0;33m!!! Erasing '${1}', will take some time... !!!\e[39m"
         echo "Press Enter to continue or '<CTRL> + <C>' to cancel"   # only for testing
         read -r                                                      # only for testing
-        dd if=/dev/urandom of="${1}" bs="${2}" status=progress       #TODO: test # erase device by copying random bytes to the hole disk
+        dd if=/dev/urandom of="${1}" bs="${2}" status=progress       # TODO: test # erase device by copying random bytes to the whole disk
     fi
 }
 
@@ -75,12 +78,12 @@ function partition-diskBios() {
         (
         echo g   # --- create a new empty GPT partition table ---
         
-        echo n   # --- add a new partition: Small 1 MB partition --
+        echo n   # --- add a new partition: Small 1 MB partition ---
         echo     # accept default value (Partition No: 1)
         echo     # accept default value (Start first sector)
         echo +1M # partition size
         echo t   # change partition type
-        echo     # accept default value (Partition No: 1)
+        # echo     # accept default value (Partition No: 1)
         echo 4   # Type: Bios boot
 
         echo n   # --- add a new partition: Swap ---
@@ -169,49 +172,81 @@ function format-partition() {
 
     #TODO: check path of partition device name
 
-    if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then                 # --- Bios + gpt
+    if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then                  # --- Bios + gpt
         # Partition No 1: empty
         set-partitionNo "swap" "2"
         set-partitionNo "root" "3"
 
-        mkswap "${1}${swapPartitionNo}"                                # make swap-partition
+        mkswap "${1}${swapPartitionNo}"                                 # make swap-partition
+
         if [ "${4}" = "btrfs" ]; then
-            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs, force (-f), blocksize (-n)
+            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"    # format root-partition, btrfs, force (-f), blocksize (-n)
         elif [ "${4}" = "ext4" ]; then
-            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"          # format root-partition, ext4, force (-F)
+            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"           # format root-partition, ext4, force (-F)
         else
-            mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"             # format root-partition, other
+            mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"              # format root-partition, other
         fi
 
-    elif [ "${2}" = "Bios" ] && [ "${3}" = "mbr" ]; then               # --- Bios + mbr
+    elif [ "${2}" = "Bios" ] && [ "${3}" = "mbr" ]; then                # --- Bios + mbr
         set-partitionNo "swap" "1"
         set-partitionNo "root" "2"
 
-        mkswap "${1}${swapPartitionNo}"                                # make swap-partition
+        mkswap "${1}${swapPartitionNo}"                                 # make swap-partition
 
         if [ "${4}" = "btrfs" ]; then
-            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs, force (-f), blocksize (-n)
+            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"    # format root-partition, btrfs, force (-f), blocksize (-n)
         elif [ "${4}" = "ext4" ]; then
-            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"          # format root-partition, ext4, force (-F)
+            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"           # format root-partition, ext4, force (-F)
         else
-            mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"             # format root-partition
+            mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"              # format root-partition
         fi
 
-    else                                                               # --- Uefi + gpt
+    else                                                                # --- Uefi + gpt
         set-partitionNo "efi" "1"
         set-partitionNo "swap" "2"
         set-partitionNo "root" "3"
 
-        mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}"        # format efi-partition
-        mkswap "${1}${swapPartitionNo}"                                # make swap-partition
+        mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}"         # format efi-partition
+        mkswap "${1}${swapPartitionNo}"                                 # make swap-partition
+    fi
+# ### TEST --------------------------------------------------------------------
+# echo -e "\nPress Enter to continue - function 'format-partition': before encrypting root disk"
+# read -r
+# ### TEST --------------------------------------------------------------------
+
+    # TODO seperate function for encryption
+    if [ "${encryption}" = "true" ]; then # encryption # https://wiki.archlinux.org/title/Dm-crypt
+        # echo "${encryptionPassword}" | cryptsetup luksFormat -y -v --type luks2 --label "${encryptionRootName}" "${1}${rootPartitionNo}" --key-file -    # encrypt root partition # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Preparing_non-boot_partitions
+        # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-luksFormat.8.en
+        # https://wiki.archlinux.org/title/Dm-crypt/Device_encryption#Encrypting_devices_with_cryptsetup
+        # GRUB's support for LUKS2 is limited; see GRUB#Encrypted /boot for details.
+        echo -e "\nEnrypting root partition..."
+        cryptsetup luksFormat --pbkdf pbkdf2 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Lable (-L) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
+
+        # echo "${encryptionPassword}" | cryptsetup open -v --type luks2 "${1}${rootPartitionNo}" "${encryptionRootName}" --key-file -   # '-' : read from stdin -> echo
+        #cryptsetup open -v --type luks2 "${1}${rootPartitionNo}" "${encryptionRootName}"
+        echo -e "\nOpening encrypted root partition..."
+        cryptsetup open "${1}${rootPartitionNo}" "${encryptionRootName}"
+                                                    # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-open.8.en
         if [ "${4}" = "btrfs" ]; then
-            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"   # format root-partition, btrfs, force (-f), blocksize (-n)
-            elif [ "${4}" = "ext4" ]; then
-            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"          # format root-partition, ext4, force (-F)
+            #mkfs."${4}" -f -L "${7}" -n 32k "${encryptionRootPath}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n)   #TODO: config variable for blocksize
+            #mkfs."${4}" -f "${encryptionRootPath}"
+            mkfs."${4}" -f -L "${7}" "${encryptionRootPath}"
+        elif [ "${4}" = "ext4" ]; then
+            mkfs."${4}" -F -L "${7}" "${encryptionRootPath}"                # format root-partition, ext4, force (-F), label (-l)   # encryptionRootPath e.g.: '/dev/mapper/cryptroot'
         else
-            mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"             # format root-partition
+            mkfs."${4}" "${encryptionRootPath}"                             # format root-partition, other filesystems
+        fi
+    else                                                            # no encryption
+        if [ "${4}" = "btrfs" ]; then
+            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n)   #TODO: config variable for blocksize
+        elif [ "${4}" = "ext4" ]; then
+            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"               # format root-partition, ext4, force (-F), label (-l)
+        else
+            mkfs."${4}" "${1}${rootPartitionNo}"                            # format root-partition, other filesystems
         fi
     fi
+    
 }
 
 function set-partitionNo() {
@@ -247,10 +282,9 @@ function set-partitionNo() {
 }
 
 function mount-partitionRootInitial() {
-    # Parameter 1: device
-    # Parameter 2: filesystemType
-    # Parameter 3: rootPartitionNo
-    # Parameter 4: mount target (e.g. /mnt)
+    # Parameter 1: device (e.g. '/dev/vda') or "encryptionDeviceMapperPath/" (e.g. '/dev/mapper/')
+    # Parameter 3: rootPartitionNo (e.g. '3') or encryptionRootName (e.g. 'cryptroot')
+    # Parameter 4: mount target (e.g. '/mnt')
 
     #echo "P1 device: ${1}; P2 filesystemType: ${2}; P3 rootPartitionNo: ${3}; P4 mount target: ${4}"
 
@@ -259,8 +293,16 @@ function mount-partitionRootInitial() {
             #mountOption="-o ${mountOptionBtrfs}" # mountOption="-o ${mountOptionBtrfs} -t ${2}"
             #mountOption="-o ${mountOptionBtrfsInit}"
 
-            echo "mount -o ${mountOptionBtrfsInit} ${1}${3} ${4}"
-            mount -o "${mountOptionBtrfsInit}" "${1}${3}" "${4}" 
+            #echo "mount -o ${mountOptionBtrfsInit} ${1}${3} ${4}"
+            #mount -o "${mountOptionBtrfsInit}" "${1}${3}" "${4}"
+            echo "mount ${1}${3} ${4}"
+            mount "${1}${3}" "${4}"
+
+# ### TEST --------------------------------------------------------------------
+# echo -e "\nPress Enter to continue - after mount-partitionRootInitial: btrfs mount"
+# read -r
+# ### TEST --------------------------------------------------------------------
+
         ;;
 
         *)
@@ -284,26 +326,30 @@ function mount-partitionRootInitial() {
 
 function mount-partition() {                            # mounting all partitions (btrfs: subvolumes) as preparation for installation
                                                         # https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
-    # Parameter 1: device
+    # Parameter 1: device (e.g. '/dev/vda')
     # Parameter 2: bootMode
     # Parameter 3: filesystemType
     # Parameter 4: efiPartitionNo
     # Parameter 5: swapPartitionNo
-    # Parameter 6: rootPartitionNo
+    # Parameter 6: rootPartitionNo (e.g. '3')
     # Parameter 7: mount target (e.g. /mnt)
-
-    #echo -e "efiPartitionNo ${4} \nswapPartitionNo ${5} \nrootPartitionNo ${6}"   # only for test
 
     case "${3}" in                             # filsystem specific mount options
         "btrfs")                               # btrfs: mount every subvolume (creating related folder if necessary)
             echo "Mounting all btrfs subvolumes..."
             
-            echo "- first mounting root subvolume to '${7}'"   # or creating mount targets for the other subvolumes will fail + can not be mounted
+            echo "- mounting root subvolume to '${7}'"   # or creating mount targets for the other subvolumes will fail + can not be mounted
             for subvol in "${!btrfsSubvolLayout[@]}"; do
                 if [ "${btrfsSubvolLayout[${subvol}]}" = "/" ]; then
-                    echo "mount -o ${mountOptionBtrfs},subvol=${subvol} ${1}${6} ${7}"
-                    mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}"
-                    #mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}${btrfsSubvolLayout[${subvol}]}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@ /dev/vda3 /mnt/
+                    if [ "${encryption}" = "true" ]; then    
+                        echo "mount -o ${mountOptionBtrfs},subvol=${subvol} ${encryptionRootPath} ${7}"
+                        mount -o "${mountOptionBtrfs},subvol=${subvol}" "${encryptionRootPath}" "${7}"
+                    else
+                        echo "mount -o ${mountOptionBtrfs},subvol=${subvol} ${1}${6} ${7}"
+                        mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}"
+                        #mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}${btrfsSubvolLayout[${subvol}]}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@ /dev/vda3 /mnt/
+                    fi
+
                     break   # no need to go through the rest of the hashtable, if root subvolume is found
                 fi
             done
@@ -326,20 +372,35 @@ function mount-partition() {                            # mounting all partition
 
             echo "- mounting subvolumes..."
             for subvol in "${!btrfsSubvolLayout[@]}"; do
-                if [ "${subvol}" = "@" ]; then                             # special handling for root subvolume @, already mounted (very first step)
+                if [ "${subvol}" = "@" ]; then                             # special handling for root subvolume @, already mounted (very first step in current function)
                     continue
                 fi
-                mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}${btrfsSubvolLayout[${subvol}]}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@home /dev/vda3 /mnt/home
+
+                if [ "${encryption}" = "true" ]; then  
+                    mount -o "${mountOptionBtrfs},subvol=${subvol}" "${encryptionRootPath}" "${7}${btrfsSubvolLayout[${subvol}]}"   # e.g. .../dev/mapper/cryptroot /mnt/home
+                else
+                    mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}${btrfsSubvolLayout[${subvol}]}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@home /dev/vda3 /mnt/home
+                fi
             done
         ;;
 
-        *)                                            # other filesystems
+        *) # other filesystems
             if [ -z "${mountOptionDefault}" ]; then   # no options configured, let mount command go for it
-                echo "mount ${1}${6} ${7}"
-                mount "${1}${6}" "${7}"
-            else                
-                echo "mount -o ${mountOptionDefault} ${1}${6} ${7}"
-                mount -o "${mountOptionDefault}" "${1}${6}" "${7}"
+                if [ "${encryption}" = "true" ]; then 
+                    echo "mount ${encryptionRootPath} ${7}"
+                    mount "${encryptionRootPath}" "${7}"
+                else
+                    echo "mount ${1}${6} ${7}"
+                    mount "${1}${6}" "${7}"
+                fi
+            else
+                if [ "${encryption}" = "true" ]; then 
+                    echo "mount -o ${mountOptionDefault} ${encryptionRootPath} ${7}"
+                    mount -o "${mountOptionDefault}" "${encryptionRootPath}" "${7}"
+                else
+                    echo "mount -o ${mountOptionDefault} ${1}${6} ${7}"
+                    mount -o "${mountOptionDefault}" "${1}${6}" "${7}"
+                fi
             fi
         ;;
     esac
@@ -350,8 +411,8 @@ function mount-partition() {                            # mounting all partition
 
 
     # --- EFI
-    if [ "${2}" = "Uefi" ]; then               # uefi
-        mkdir "${7}${pathEfi}"                 # e.g. /mnt/efi
+    if [ "${2}" = "Uefi" ]; then               # bootMode: Uefi
+        mkdir -p "${7}${pathEfi}"              # e.g. /mnt/efi or /mnt/boot/efi
         mount "${1}${4}" "${7}${pathEfi}"      # EFI-partition # e.g. mount /dev/vda1 /mnt/efi
     fi
 }
@@ -368,7 +429,7 @@ function create-btrfsSubvolume() {             # https://wiki.archlinux.org/titl
         fi
     done
 
-    # creating the other subvolumes:
+    # creating the other subvolumes according to the configured layout:
     for subvol in "${!btrfsSubvolLayout[@]}"; do
         if [ ! -e "${1}/${subvol}" ]; then                                                  # if subvolume NOT already present
             echo "|__ creating subvolume '${subvol}'..."
@@ -379,7 +440,7 @@ function create-btrfsSubvolume() {             # https://wiki.archlinux.org/titl
     done
 }
 
-function create-fstab() {   # function not used; btrfs subvolumes get mounted and the genfstab does the job
+function create-fstab() {   # function not used; btrfs subvolumes get mounted and then genfstab does the job
     #if [ "${filesystemType}" = "btrfs" ] && [ "${deviceType}" = "ssd" ]; then
     if [ "${filesystemType}" = "btrfs" ]; then
         fstabPath="/mnt/etc/fstab"   # "${fstabPath}"
@@ -660,21 +721,75 @@ function install-grafics() {
 function install-bootloader() {
     if [ "${bootloader}" = "grub" ]; then
         echo "- installing grub"
-        #pacman -S --noconfirm grub                            # grub: install
+        #pacman -S --noconfirm grub                     # grub: install
         if [ "${filesystemType}" = "btrfs" ]; then pacman -S --noconfirm grub grub-btrfs; else pacman -S --noconfirm grub; fi   # grub-btrfs
 
-        if [ "${bootMode}" = "Bios" ]; then                   # Bios
+        if [ "${encryption}" = "true" ]; then 
+            echo -e "\n\e[0;35m- Configuring the boot loader (encryption settings) \e[39m"
+            # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Configuring_the_boot_loader
+            # In order to unlock the encrypted root partition at boot
+
+            config-bootloader
+        fi
+
+# ### TEST --------------------------------------------------------------------
+# echo -e "\nPress Enter to continue - chroot: fct 'install-bootloader', after 'config-bootloader'"
+# read -r
+# ### TEST --------------------------------------------------------------------
+
+        if [ "${bootMode}" = "Bios" ]; then             # Bios
             echo "- ... for Bios boot mode"
             grub-install --target=i386-pc "${device}"
-        else                                                  # Uefi
+        else                                            # Uefi
             echo "- ... for Uefi boot mode"
             pacman -S --noconfirm efibootmgr
             grub-install --target=x86_64-efi --efi-directory="${pathEfi}" --bootloader-id="${bootloaderId}"
         fi
 
         echo "- creating Grub config file"
-        grub-mkconfig -o "${pathGrubCfg}"                     # grub: create config
+        grub-mkconfig -o "${pathGrubCfg}"               # grub: create config
+
+# ### TEST --------------------------------------------------------------------
+# echo -e "\nPress Enter to continue - chroot: end of fct 'install-bootloader'"
+# read -r
+# ### TEST --------------------------------------------------------------------
+
     fi
+}
+
+function config-bootloader() {          # if $encryption = "true"
+    if [ "${bootloader}" = "grub" ]; then
+        local uuidRootPartiton=""
+        # Note: 'rootPartitionNo' not set in chroot, uses default value '0' from config (-> e.g. '/dev/vda0')
+        uuidRootPartiton=$(blkid | grep "LABEL=\"${encryptionRootName}\"" | cut -d '"' -f 2)    # /dev/vda3: UUID="32b092af-c623-4e01-853c-87725214980f" LABEL="cryptroot" TYPE="crypto_LUKS" PARTUUID="d0ba9d2d-ce65-4408-ad9e-2baf4aa11f5a"
+                                                                                                # needs a label to be set in function 'format-partition'
+        #uuidRootPartiton=$(blkid | grep "crypto_LUKS" | cut -d '"' -f 2)   # no label, only root partition encrypted # /dev/vda3: UUID="b68f1d17-ff77-452a-9651-ce32ca2baddf" TYPE="crypto_LUKS" PARTUUID="56eae391-fa31-4f21-92b5-9b7d69eef604"
+        
+        echo "uuidRootPartiton: '${uuidRootPartiton}'"
+        if [ -z $(echo "${uuidRootPartiton}" | xargs) ]; then
+            echo "--- blkid:"
+            blkid
+            echo -e "\e[0;31mUUID of root partition (NOT the mapper device !) could not be defined, please enter manually.\e[39m"
+            read -r -p "Enter UUID: " uuidRootPartiton
+        fi
+
+        sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartiton}:${encryptionRootName} root=${encryptionRootPath}|g" /etc/default/grub   # GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"
+
+        # enable booting from LUKS encrypted devices:
+        sed -i 's|#GRUB_ENABLE_CRYPTODISK=y|GRUB_ENABLE_CRYPTODISK=y|g' /etc/default/grub
+
+        # sudo grub-mkconfig -o "$pathGrubCfg"   # not necessary anymore, will be done in function 'install-bootloader' after this function ()'config-bootloader') finishes
+    fi
+}
+
+function config-mkinitcpio() {          # if $encryption = "true"
+    # modify MODULES:
+    if [ "${filesystemType}" = "btrfs" ]; then
+        sed -i 's/MODULES=()/MODULES=(btrfs)/g' "${pathToMkinitcpioConf}"
+    fi
+
+    # modify HOOKS:
+    sed -i -E 's/consolefont block filesystems/consolefont block encrypt filesystems/g' "${pathToMkinitcpioConf}"
 }
 
 function install-additionalPackages() {

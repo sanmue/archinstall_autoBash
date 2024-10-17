@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-#set -x   # enable debug mode
+# set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash_chroot.sh
@@ -41,18 +41,35 @@ set-locales
 echo -e "\n\e[0;35m## Network configuration \e[39m"
 config-network
 
-#TODO: Initramfs: For LVM, system encryption or RAID, modify mkinitcpio.conf(5) and recreate the initramfs image
-# mkinitcpio -P
-
 echo -e "\n\e[0;35m## Root password \e[39m"
 set-password root   # set initial password
 
 echo -e "\n\e[0;35m## Grafics\e[39m"
 install-grafics
 
-echo -e "\n\e[0;35m## Boot loader\e[39m"
-install-bootloader
+# https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Configuring_mkinitcpio
+# https://wiki.archlinux.org/title/Installation_guide#Initramfs
+# https://wiki.archlinux.org/title/Mkinitcpio#Manual_generation
 
+echo -e "\n\e[0;35m## Boot loader installation \e[39m"
+install-bootloader   # including config if encryption = true
+
+if [ "${encryption}" = "true" ]; then
+    echo -e "\n\e[0;35m## Initramfs \e[39m"
+    # Initramfs: For LVM, system encryption or RAID, modify mkinitcpio.conf(5) and recreate the initramfs image
+
+    echo -e "\n\e[0;35m- Configuring mkinitcpio \e[39m"
+    # modify mkinitcpio.conf:
+    config-mkinitcpio
+    # regenerate initramfs:
+    # mkinitcpio -p "${kernelPackage}"  # e.g. mkinitcpio -p linux
+    mkinitcpio -P                       # (re-)generate all existing presets
+fi
+
+# ### TEST --------------------------------------------------------------------
+# echo -e "\nPress Enter to continue - chroot: after configuring + executing mkinitcpio "
+# read -r
+# ### TEST --------------------------------------------------------------------
 
 # --- Post-installation (original position in wiki: after reboot) - ! order changed, was moved forward one position compared to the wiki ! ---
 echo -e "\n\n\e[0;36m# --- Post-installation part - brought forware (original position: after reboot --- \e[39m"
