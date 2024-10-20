@@ -36,7 +36,7 @@ set-timezone "${timezone}" /etc/localtime
 
 echo -e "\n\e[0;35m## Localization \e[39m"
 set-locales
-#TODO: optional: further customization of '/etc/locale.conf' (e.g. LC_ADDRESS, LC_IDENTIFICATION, ... for other locale than defaultLang)
+# TODO: optional: further customization of '/etc/locale.conf' (e.g. LC_ADDRESS, LC_IDENTIFICATION, ... for other locale than defaultLang)
 
 echo -e "\n\e[0;35m## Network configuration \e[39m"
 config-network

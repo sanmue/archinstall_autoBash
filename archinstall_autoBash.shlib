@@ -170,7 +170,7 @@ function format-partition() {
     # Parameter 8: partitionLabelEfi
     # Parameter 9: partitionLabelHome
 
-    #TODO: check path of partition device name
+    # TODO: check path of partition device name
 
     if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then                  # --- Bios + gpt
         # Partition No 1: empty
@@ -229,7 +229,7 @@ function format-partition() {
         cryptsetup open "${1}${rootPartitionNo}" "${encryptionRootName}"
                                                     # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-open.8.en
         if [ "${4}" = "btrfs" ]; then
-            #mkfs."${4}" -f -L "${7}" -n 32k "${encryptionRootPath}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n)   #TODO: config variable for blocksize
+            #mkfs."${4}" -f -L "${7}" -n 32k "${encryptionRootPath}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n)   # TODO: config variable for blocksize
             #mkfs."${4}" -f "${encryptionRootPath}"
             mkfs."${4}" -f -L "${7}" "${encryptionRootPath}"
         elif [ "${4}" = "ext4" ]; then
@@ -239,7 +239,7 @@ function format-partition() {
         fi
     else                                                            # no encryption
         if [ "${4}" = "btrfs" ]; then
-            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n)   #TODO: config variable for blocksize
+            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n)   # TODO: config variable for blocksize
         elif [ "${4}" = "ext4" ]; then
             mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"               # format root-partition, ext4, force (-F), label (-l)
         else
@@ -555,7 +555,7 @@ function modify-fstab() {
     fi
 }
 
-function config-snapper() {   # should work after finished install + reboot, but not in chroot-environment (and when no config for root + subvol .snapshots #TODO: !! not tested !! )
+function config-snapper() {   # should work after finished install + reboot, but not in chroot-environment (and when no config for root + subvol .snapshots # TODO: !! not tested !! )
     # https://wiki.archlinux.org/title/Snapper
 
     # Parameter 1: name for the config      (e.g. "root" ("${snapperConfigName_root}"))
@@ -574,7 +574,7 @@ function config-snapper() {   # should work after finished install + reboot, but
         snapper -c "${configName}" set-config "${snapperConfKey}=${snapperSnapshotConf[${snapperConfKey}]}"   # e.g.: snapper -c root set-config "ALLOW_GROUPS=wheel"
     done
 
-    #systemctl enable snapper-timeline.timer                        # I do not want timeline snapshots; see 'snap-pac' #TODO: config option for creating timeline snapshot (too)
+    #systemctl enable snapper-timeline.timer                        # I do not want timeline snapshots; see 'snap-pac' # TODO: config option for creating timeline snapshot (too)
     systemctl enable snapper-cleanup.timer                          # just to be sure, should also be enabled later when calling 'enable-service' # periodically clean up older snapshots
     if [ "${bootloader}" = "grub" ]; then systemctl enable grub-btrfsd.service; fi  # Include btrfs snapshots in GRUB boot options # just to be sure # Regenerate grub-btrfs.cfg
 }
@@ -623,7 +623,7 @@ function config-snapperLiveEnv() {   # when booted in live environment
     mkdir -p "${pathToSubvolume_tmp}/etc/conf.d" && cp "/etc/conf.d/snapper" "${pathToSubvolume_tmp}/etc/conf.d/"
 
     # 'arrService' should alerady contain these services (for "real" system):
-    # #systemctl enable snapper-timeline.timer                          # I do not want timeline snapshots; see 'snap-pac' #TODO: config option for creating timeline snapshot (too)
+    # #systemctl enable snapper-timeline.timer                          # I do not want timeline snapshots; see 'snap-pac' # TODO: config option for creating timeline snapshot (too)
     #systemctl enable snapper-cleanup.timer                             # just to be sure, should also be enabled later when calling 'enable-service' # periodically clean up older snapshots
     #if [ "${bootloader}" = "grub" ]; then systemctl enable grub-btrfsd.service; fi  # just to be sure # Regenerate grub-btrfs.cfg
 }
@@ -798,22 +798,22 @@ function install-additionalPackages() {
 
     pacman -S --noconfirm --needed ${strListAdditionalPkg_print}
     pacman -S --noconfirm --needed ${strListAdditionalPkg_firewall}
-    #pacman -S --noconfirm ${strListAdditionalPkg_PowerMgmt}  #TODO: query if corresponding variable is set -> install
+    #pacman -S --noconfirm ${strListAdditionalPkg_PowerMgmt}  # TODO: query if corresponding variable is set -> install
     yes | pacman -S ${strListAdditionalPkg_conflicting}       # install packages with known conflicts an confirm prompt-question with yes
 
     if [ "${virtualization}" = "true" ]; then
-        #TODO: check cpu for virtualization support
-        #TODO: nested virtualization
+        # TODO: check cpu for virtualization support
+        # TODO: nested virtualization
 
         echo "- installing additional packages for virtualization"
         pacman -S --noconfirm --needed ${strListAdditionalPkg_VM}
-        #TODO: config '/etc/libvirt/libvirtd.conf' # e.g. set: unix_sock_group = "libvirt" # unix_sock_rw_perms = "0770"
+        # TODO: config '/etc/libvirt/libvirtd.conf' # e.g. set: unix_sock_group = "libvirt" # unix_sock_rw_perms = "0770"
 
-        #pacmman -S -noconfirm --needed spice-vdagent   #TODO: only if the machine is a virtual machine: clipboard sharing Guest<->Host
+        #pacmman -S -noconfirm --needed spice-vdagent   # TODO: only if the machine is a virtual machine: clipboard sharing Guest<->Host
     fi
 
-    #pacman -S --noconfirm --needed "${strListAdditionalPkg_zsh}"   #TODO
-    #echo "${zshSyntaxConf}" >> $userdir/.zshrc                     #TODO
+    #pacman -S --noconfirm --needed "${strListAdditionalPkg_zsh}"   # TODO
+    #echo "${zshSyntaxConf}" >> $userdir/.zshrc                     # TODO
 }
 
 function enable-service() {
@@ -848,5 +848,5 @@ function install-DesktopEnvironment() {
 
 
 function newFunction() {
-    echo "#TODO: implement function '${FUNCNAME}'"
+    echo "# TODO: implement function '${FUNCNAME}'"
 }

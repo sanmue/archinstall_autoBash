@@ -38,14 +38,14 @@ loadkeys "${consoleKeyboardLayout}"    # set console keyboard layout (temporary 
 echo "- setting terminal font to: '${terminalFont}' (temporary for current session)"
 setfont "${terminalFont}"              # set terminal font (temporary for current session)
 
-#TODO: Check internet connection
+# TODO: Check internet connection
 
 echo -e "\n\e[0;35m## Update the system clock (set-timezone) \e[39m"
 echo "- setting timezone to: '${timezone}'"
 timedatectl set-timezone "${timezone}" # set timezone
 #timedatectl status                    # show timezone settings
 
-#TODO: Check for existing partition(s) (would be overwritten via function "partition-disk")
+# TODO: Check for existing partition(s) (would be overwritten via function "partition-disk")
 
 echo "checking if device path '${device}' is valid"
 check-devicePath "${device}"                    # check if configured device path is valid
@@ -107,11 +107,11 @@ fi
 
 
 echo -e "\n\n\e[0;36m# --- Installation --- \e[39m"
-#TODO: custom config mirrors pacman / reflector
+# TODO: custom config mirrors pacman / reflector
 
 echo -e "\n\e[0;35m## Install essential packages (pacstrap) \e[39m"
 pacstrap -K /mnt ${strListPacstrapPackage}      # Install essential packages to "/mnt" (new root partition is mounted to /mnt)
-                                                # Not enclosing the variable in quotes is intentional; #TODO: using an array or a function could be prettier (https://www.shellcheck.net/wiki/SC2086)
+                                                # Not enclosing the variable in quotes is intentional; # TODO: using an array or a function could be prettier (https://www.shellcheck.net/wiki/SC2086)
 
 echo -e "\n\n\e[0;36m# --- Configure the system --- \e[39m"
 echo -e "\n\e[0;35m## Fstab \e[39m"
