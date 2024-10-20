@@ -209,6 +209,7 @@ function format-partition() {
         mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}"         # format efi-partition
         mkswap "${1}${swapPartitionNo}"                                 # make swap-partition
     fi
+
 # ### TEST --------------------------------------------------------------------
 # echo -e "\nPress Enter to continue - function 'format-partition': before encrypting root disk"
 # read -r
@@ -281,47 +282,19 @@ function set-partitionNo() {
     esac
 }
 
-function mount-partitionRootInitial() {
+function mount-partitionRootInitial() { 
     # Parameter 1: device (e.g. '/dev/vda') or "encryptionDeviceMapperPath/" (e.g. '/dev/mapper/')
     # Parameter 3: rootPartitionNo (e.g. '3') or encryptionRootName (e.g. 'cryptroot')
     # Parameter 4: mount target (e.g. '/mnt')
 
-    #echo "P1 device: ${1}; P2 filesystemType: ${2}; P3 rootPartitionNo: ${3}; P4 mount target: ${4}"
+    # echo "P1 device: ${1}; P2 filesystemType: ${2}; P3 rootPartitionNo: ${3}; P4 mount target: ${4}"
 
-    case "${2}" in                                      # filsystem specific mount options
-        "btrfs")
-            #mountOption="-o ${mountOptionBtrfs}" # mountOption="-o ${mountOptionBtrfs} -t ${2}"
-            #mountOption="-o ${mountOptionBtrfsInit}"
-
-            #echo "mount -o ${mountOptionBtrfsInit} ${1}${3} ${4}"
-            #mount -o "${mountOptionBtrfsInit}" "${1}${3}" "${4}"
-            echo "mount ${1}${3} ${4}"
-            mount "${1}${3}" "${4}"
-
-# ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - after mount-partitionRootInitial: btrfs mount"
-# read -r
-# ### TEST --------------------------------------------------------------------
-
-        ;;
-
-        *)
-            if [ -z "${mountOptionDefault}" ]; then   # no options configured, let mount command go for it
-                echo "mount ${1}${3} ${4}"
-                #mountOption="${mountOptionDefaultInit}"
-                mount "${1}${3}" "${4}"
-            else
-                #mountOption="-o ${mountOptionDefaultInit}"
-                
-                echo "mount -o ${mountOptionDefaultInit} ${1}${3} ${4}"
-                mount -o "${mountOptionDefaultInit}" "${1}${3}" "${4}"
-            fi
-        ;;
-    esac
-
-    #echo "mount ${mountOption} ${1}${3} ${4}"
-    #mount "${mountOption}" "${1}${3}" "${4}"           # root-partition, mount with mount options
-    #mount "${1}${3}" "${4}"                            # root-partition, fix, mount without mount options
+    # initial mount, no mount options needed
+    # currently only relevant for btrfs: to create subvolumes
+    echo "mount ${1}${3} ${4}"
+    mount "${1}${3}" "${4}" # root-partition, fix, mount without mount options
+    # echo "mount ${1}${3} ${mountOption} ${4}"
+    # mount "${1}${3}" "${mountOption}"  "${4}" # root-partition, mount with mount options   
 }
 
 function mount-partition() {                            # mounting all partitions (btrfs: subvolumes) as preparation for installation
@@ -384,7 +357,8 @@ function mount-partition() {                            # mounting all partition
             done
         ;;
 
-        *) # other filesystems
+        *)
+            # other filesystems
             if [ -z "${mountOptionDefault}" ]; then   # no options configured, let mount command go for it
                 if [ "${encryption}" = "true" ]; then 
                     echo "mount ${encryptionRootPath} ${7}"
