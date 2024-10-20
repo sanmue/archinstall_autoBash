@@ -72,7 +72,8 @@ fi
 # ### TEST --------------------------------------------------------------------
 
 # --- Post-installation (original position in wiki: after reboot) - ! order changed, was moved forward one position compared to the wiki ! ---
-echo -e "\n\n\e[0;36m# --- Post-installation part - brought forware (original position: after reboot --- \e[39m"
+echo -e "\n\n\e[0;36m# --- Post-installation part - brought forward (original position: after reboot --- \e[39m"
+
 echo -e "\n\e[0;35m## Installing additional packages \e[39m"
 install-additionalPackages
 
@@ -87,4 +88,4 @@ echo -e "\n\e[0;35m## Install graphical user interface \e[39m"
 install-DesktopEnvironment
 
 echo -e "\n\e[0;35m## Install additional fonts \e[39m"
-if [ "${installFont}" = "true" ]; then pacman -S --noconfirm --needed ${strListFontPkg}; fi
+if [ "${installFont}" = "true" ]; then pacman -S --noconfirm --needed "${strListFontPkg}"; fi

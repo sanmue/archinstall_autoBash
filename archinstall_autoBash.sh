@@ -110,8 +110,9 @@ echo -e "\n\n\e[0;36m# --- Installation --- \e[39m"
 # TODO: custom config mirrors pacman / reflector
 
 echo -e "\n\e[0;35m## Install essential packages (pacstrap) \e[39m"
-pacstrap -K /mnt ${strListPacstrapPackage}      # Install essential packages to "/mnt" (new root partition is mounted to /mnt)
-                                                # Not enclosing the variable in quotes is intentional; # TODO: using an array or a function could be prettier (https://www.shellcheck.net/wiki/SC2086)
+pacstrap -K /mnt ${strListPacstrapPackage}  # ! do not doublequote '${strListPacstrapPackage}' or pacstrap will fail !
+                                            # Install essential packages to "/mnt" (new root partition is mounted to /mnt)
+                                            # Not enclosing the variable in quotes is intentional; # TODO: using an array or a function could be prettier (https://www.shellcheck.net/wiki/SC2086)
 
 echo -e "\n\n\e[0;36m# --- Configure the system --- \e[39m"
 echo -e "\n\e[0;35m## Fstab \e[39m"
@@ -153,12 +154,13 @@ rm /mnt/root/archinstall_autoBash.shlib
 rm "/mnt/root/${fileDeviceName}"
 
 
+# config snapper:
 if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ]; then
     echo -e "\n\n\e[0;36m# Configure snapper for root subvolume \e[39m"
-    config-snapperLiveEnv "${snapperConfigName_root}" "/mnt" "/"    # '/mnt' = current mount path of (root) subvolume, /' = final 'real' path of (root) subvolume to create the config for
+    config-snapperLiveEnv "${snapperConfigName_root}" "/mnt" "/" # '/mnt' = current mount path of (root) subvolume, /' = final 'real' path of (root) subvolume to create the config for
 fi
 
-
+# reboot:
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
 echo "- unmounting /mnt"
 umount -R /mnt

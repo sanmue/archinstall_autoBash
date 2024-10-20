@@ -297,8 +297,8 @@ mount-partitionRootInitial() {
     # mount "${1}${3}" "${mountOption}"  "${4}" # root-partition, mount with mount options   
 }
 
-mount-partition() {                            # mounting all partitions (btrfs: subvolumes) as preparation for installation
-                                                        # https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
+mount-partition() { # mounting all partitions (btrfs: subvolumes) as preparation for installation; and snapper rollback folder
+                    # https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
     # Parameter 1: device (e.g. '/dev/vda')
     # Parameter 2: bootMode
     # Parameter 3: filesystemType
@@ -345,6 +345,15 @@ mount-partition() {                            # mounting all partitions (btrfs:
                 fi
             done
 
+            if [ "${snapperRollback}" = true ]; then
+                echo "- creating mount targets for snapperRollbackFolder, if it does not exist..."
+                if [ ! -e  "${7}${snapperRollbackFolder}" ]; then   # if mount target (folder) does NOT exist
+                    echo -e "\e[0;33m    |__ mount target '${7}${snapperRollbackFolder}' does not exist, folder will be created...\e[39m" # e.g. /mnt/home
+                    mkdir -p "${7}${snapperRollbackFolder}"
+                    chmod -R 750 "${7}${snapperRollbackFolder}" && chown -R :wheel "${7}${snapperRollbackFolder}"
+                fi
+            fi
+
             echo "- mounting subvolumes..."
             for subvol in "${!btrfsSubvolLayout[@]}"; do
                 if [ "${subvol}" = "@" ]; then                             # special handling for root subvolume @, already mounted (very first step in current function)
@@ -357,6 +366,15 @@ mount-partition() {                            # mounting all partitions (btrfs:
                     mount -o "${mountOptionBtrfs},subvol=${subvol}" "${1}${6}" "${7}${btrfsSubvolLayout[${subvol}]}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@home /dev/vda3 /mnt/home
                 fi
             done
+
+            if [ "${snapperRollback}" = true ]; then
+                echo "- mounting snapperRollbackFolder..."
+                if [ "${encryption}" = "true" ]; then  
+                    mount -o "${mountOptionBtrfs},subvol=/" "${encryptionRootPath}" "${7}${snapperRollbackFolder}"   # e.g. .../dev/mapper/cryptroot /mnt/.btrfsroot
+                else
+                    mount -o "${mountOptionBtrfs},subvol=/" "${1}${6}" "${7}${snapperRollbackFolder}"  # e.g. mount -o rw,noatime,discard=async,compress=zstd,space_cache=v2,subvol=@home /dev/vda3 /mnt/.btrfsroot
+                fi
+            fi
         ;;
 
         *)
@@ -555,7 +573,7 @@ config-snapper() {   # should work after finished install + reboot, but not in c
     if [ "${bootloader}" = "grub" ]; then systemctl enable grub-btrfsd.service; fi  # Include btrfs snapshots in GRUB boot options # just to be sure # Regenerate grub-btrfs.cfg
 }
 
-config-snapperLiveEnv() {   # when booted in live environment
+config-snapperLiveEnv() { # when booted in live environment
     # https://wiki.archlinux.org/title/Snapper
     # https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
 
@@ -602,6 +620,34 @@ config-snapperLiveEnv() {   # when booted in live environment
     # #systemctl enable snapper-timeline.timer                          # I do not want timeline snapshots; see 'snap-pac' # TODO: config option for creating timeline snapshot (too)
     #systemctl enable snapper-cleanup.timer                             # just to be sure, should also be enabled later when calling 'enable-service' # periodically clean up older snapshots
     #if [ "${bootloader}" = "grub" ]; then systemctl enable grub-btrfsd.service; fi  # just to be sure # Regenerate grub-btrfs.cfg
+}
+
+config-snapperRollback() { # called in a separate script after reboot
+    # Parameter 1: path to snapperRollbackFolder (e.g. '/.btrfsroot')
+    # Parameter 2: snapper snapshot subvolume (e.g. '@snapshots')
+    # Parameter 3: snapperRollbackConfig file (e.g. '/etc/snapper-rollback.conf')
+
+    local srf="${1}" # path to snapperRollbackFolder
+    local sss="${2}" # snapper snapshot subvolume
+    local srcf="${3}" # snapperRollbackConfig file 
+
+    echo "Download and install snapper-rollback (AUR)..."
+    # echo "(Initial-)Password '${initialPassword}' can be used if asked"
+    # su - USERID -c "curl -L -O https://aur.archlinux.org/cgit/aur.git/snapshot/snapper-rollback.tar.gz" # user not yet available in chroot
+    curl -L -O https://aur.archlinux.org/cgit/aur.git/snapshot/snapper-rollback.tar.gz
+    tar -xf snapper-rollback.tar.gz
+    cd snapper-rollback || return
+    makepkg --noconfirm --needed -sic
+    cd .. || return
+    rm -rf snapper-rollback snapper-rollback.tar.gz
+
+    echo -e "Modify snapperRollbackConfig: set snapper snapshots subvolume name to configured subvolume name '${sss}'..."
+    # currently set in config: @snapshots # which we used in the config (if not changed manually), so ther should be no change necessary
+    sudo sed -i "s|@snapshots|${sss}|g" "${srcf}"
+
+    echo -e "Modify snapperRollbackConfig: set configured snapperRollbackFolder to configured path '${srf}'..."
+    # currently set in config: mountpoint = /btrfsroot
+    sudo sed -i "s|/btrfsroot|${srf}|g" "${srcf}" # changing '/btrfsroot' to configured snapperRollbackFolder
 }
 
 modify-locales() {
