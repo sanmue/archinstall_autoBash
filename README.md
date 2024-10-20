@@ -57,7 +57,8 @@ Here are some points of the current default configuration:
 - snapper-rollback (AUR) for simple rollback to a previous snapshot (if set to 'true' in the config + btrfs and snapper)
 - installing packages for virtualization (optional via config)
 - installing grafics packages (optional via config)
-  - ! not (well) tested !
+  - for AMD it should work (works on my machine `;-)`)
+  - but you will still need to consult the wiki to install the correct packages for your system, especially for NVIDIA and Intel.
 - installing a Desktop Environment (optional via config)
 - encryption (optional via config)
 
