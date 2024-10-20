@@ -13,7 +13,7 @@
 # ---------
 # Functions
 # ---------
-function check-bashVersion() {
+check-bashVersion() {
     # Parameter 1: min. required (major) bash version
 
     if [ "${BASH_VERSINFO[0]}" -lt "${1}" ]; then
@@ -22,7 +22,7 @@ function check-bashVersion() {
     fi
 }
 
-function check-devicePath() {
+check-devicePath() {
     # Parameter 1: device path (e.g. /dev/vda)
 
     echo "Checking if '${1}' is available"
@@ -32,7 +32,7 @@ function check-devicePath() {
     fi
 }
 
-function check-exitStatusLastCommand() {
+check-exitStatusLastCommand() {
     # Parameter 1: exit status (0 = no error)
 
     if [ "${1}" -ne 0 ]; then
@@ -43,7 +43,7 @@ function check-exitStatusLastCommand() {
     fi
 }
 
-function erase-device() {
+erase-device() {
     # Parameter 1: device path (e.g. /dev/vda)
     # Parameter 2: blocksize
 
@@ -55,7 +55,7 @@ function erase-device() {
     fi
 }
 
-function partition-disk() {
+partition-disk() {
     # Parameter 1: bootmode (Bios or Uefi)
     # Parameter 2: partition type (gpt or mbr) (Uefi: only gpt)
     # Parameter 3: device path (e.g. /dev/vda)
@@ -69,7 +69,7 @@ function partition-disk() {
     fi
 }
 
-function partition-diskBios() {
+partition-diskBios() {
     # Parameter 1: partition type (gpt or mbr)
     # Parameter 2: device path (e.g. /dev/vda)
     # Parameter 3: size of swap partition
@@ -126,7 +126,7 @@ function partition-diskBios() {
     fi
 }
 
-function partition-diskUefi() {
+partition-diskUefi() {
     # Parameter 1: device path (e.g. /dev/vda)
     # Parameter 2: size of swap partition
     # Parameter 3: size of EFI partition
@@ -159,7 +159,7 @@ function partition-diskUefi() {
     ) | sudo fdisk "${1}" 1>/dev/null
 }
 
-function format-partition() {
+format-partition() {
     # Parameter 1: device
     # Parameter 2: bootMode
     # Parameter 3: partitionType
@@ -250,7 +250,7 @@ function format-partition() {
     
 }
 
-function set-partitionNo() {
+set-partitionNo() {
     # Parameter 1: type                     # e.g. "efi", "swap" or "root"
     # Parameter 2: partitionNo              # e.g. "1"
                                             # https://wiki.archlinux.org/title/Device_file#Partition
@@ -282,7 +282,7 @@ function set-partitionNo() {
     esac
 }
 
-function mount-partitionRootInitial() { 
+mount-partitionRootInitial() { 
     # Parameter 1: device (e.g. '/dev/vda') or "encryptionDeviceMapperPath/" (e.g. '/dev/mapper/')
     # Parameter 3: rootPartitionNo (e.g. '3') or encryptionRootName (e.g. 'cryptroot')
     # Parameter 4: mount target (e.g. '/mnt')
@@ -297,7 +297,7 @@ function mount-partitionRootInitial() {
     # mount "${1}${3}" "${mountOption}"  "${4}" # root-partition, mount with mount options   
 }
 
-function mount-partition() {                            # mounting all partitions (btrfs: subvolumes) as preparation for installation
+mount-partition() {                            # mounting all partitions (btrfs: subvolumes) as preparation for installation
                                                         # https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
     # Parameter 1: device (e.g. '/dev/vda')
     # Parameter 2: bootMode
@@ -307,8 +307,10 @@ function mount-partition() {                            # mounting all partition
     # Parameter 6: rootPartitionNo (e.g. '3')
     # Parameter 7: mount target (e.g. /mnt)
 
-    case "${3}" in                             # filsystem specific mount options
-        "btrfs")                               # btrfs: mount every subvolume (creating related folder if necessary)
+    # filsystem specific mount options:
+    case "${3}" in
+        "btrfs")
+            # mount every subvolume and create related folder if necessary
             echo "Mounting all btrfs subvolumes..."
             
             echo "- mounting root subvolume to '${7}'"   # or creating mount targets for the other subvolumes will fail + can not be mounted
@@ -391,7 +393,7 @@ function mount-partition() {                            # mounting all partition
     fi
 }
 
-function create-btrfsSubvolume() {             # https://wiki.archlinux.org/title/Btrfs#Subvolumes
+create-btrfsSubvolume() {             # https://wiki.archlinux.org/title/Btrfs#Subvolumes
     # Parameter 1: mount target of root subvolume (e.g. /mnt)
 
     # want the root subvolume (mount point '/'') being the first (-> ID 256) # actually not necessary, just for looks:
@@ -414,7 +416,7 @@ function create-btrfsSubvolume() {             # https://wiki.archlinux.org/titl
     done
 }
 
-function create-fstab() {   # function not used; btrfs subvolumes get mounted and then genfstab does the job
+create-fstab() {   # function not used; btrfs subvolumes get mounted and then genfstab does the job
     #if [ "${filesystemType}" = "btrfs" ] && [ "${deviceType}" = "ssd" ]; then
     if [ "${filesystemType}" = "btrfs" ]; then
         fstabPath="/mnt/etc/fstab"   # "${fstabPath}"
@@ -450,7 +452,7 @@ function create-fstab() {   # function not used; btrfs subvolumes get mounted an
     fi
 }
 
-function create-fstab4BtrfsRootPartition() {   # function not used; btrfs subvolumes get mounted and the genfstab does the job
+create-fstab4BtrfsRootPartition() {   # function not used; btrfs subvolumes get mounted and the genfstab does the job
     # Parameter 1: fstabPath (including /mnt)
     # Parameter 2: uuid
     # Parameter 3: mountpoint   # e.g. /mnt
@@ -490,7 +492,7 @@ function create-fstab4BtrfsRootPartition() {   # function not used; btrfs subvol
     done
 }
 
-function set-btrfsDefaultSubvolume() {
+set-btrfsDefaultSubvolume() {
     # Parameter 1: path   # e.g. /mnt or /
 
     get-rootSubvolumeName   # function reads from 'btrfsSubvolLayout' and sets current value for variable 'rootSubvolumeName' # e.g. '@'
@@ -511,7 +513,7 @@ function set-btrfsDefaultSubvolume() {
     fi
 }
 
-function get-rootSubvolumeName() {
+get-rootSubvolumeName() {
     for subvol in "${!btrfsSubvolLayout[@]}"; do
         if [ "${btrfsSubvolLayout[${subvol}]}" = "/" ]; then    # if root subvolume (mount target '/')
             rootSubvolumeName="${subvol}"
@@ -521,7 +523,7 @@ function get-rootSubvolumeName() {
     done
 }
 
-function modify-fstab() {   
+modify-fstab() {   
     # Parameter 1: target file    # e.g. /mnt/etc/fstab
 
     if [ "${filesystemType}" = "btrfs" ]; then   # e.g.: btrfs: genfstab adds ...,subvolid=XXX,... to the mount options, which we do not want with regard to snapshots
@@ -529,7 +531,7 @@ function modify-fstab() {
     fi
 }
 
-function config-snapper() {   # should work after finished install + reboot, but not in chroot-environment (and when no config for root + subvol .snapshots # TODO: !! not tested !! )
+config-snapper() {   # should work after finished install + reboot, but not in chroot-environment (and when no config for root + subvol .snapshots # TODO: !! not tested !! )
     # https://wiki.archlinux.org/title/Snapper
 
     # Parameter 1: name for the config      (e.g. "root" ("${snapperConfigName_root}"))
@@ -553,7 +555,7 @@ function config-snapper() {   # should work after finished install + reboot, but
     if [ "${bootloader}" = "grub" ]; then systemctl enable grub-btrfsd.service; fi  # Include btrfs snapshots in GRUB boot options # just to be sure # Regenerate grub-btrfs.cfg
 }
 
-function config-snapperLiveEnv() {   # when booted in live environment
+config-snapperLiveEnv() {   # when booted in live environment
     # https://wiki.archlinux.org/title/Snapper
     # https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
 
@@ -602,7 +604,7 @@ function config-snapperLiveEnv() {   # when booted in live environment
     #if [ "${bootloader}" = "grub" ]; then systemctl enable grub-btrfsd.service; fi  # just to be sure # Regenerate grub-btrfs.cfg
 }
 
-function modify-locales() {
+modify-locales() {
     # Parameter 1: string with the items, seperated by space # Problem: items itsels partially have spaces inside itself (e.g. "en_US.UTF-8 UTF-8") -> no good dilimeter available
     # Parameter 2: path to the file in which the substitution will take place (should be "/etc/locale.gen")
 
@@ -612,7 +614,7 @@ function modify-locales() {
     done
 }
 
-function set-timezone() {
+set-timezone() {
     # Parameter 1: timezone
     # Parameter 2: localtime file (should be /etc/localtime)
 
@@ -622,7 +624,7 @@ function set-timezone() {
     hwclock --systohc 
 }
 
-function set-locales() {
+set-locales() {
     echo "- uncomment needed locales in '/etc/locale.gen'"
     modify-locales "${arrLocalegen[*]}" /etc/locale.gen             # uncomment needed locales in "/etc/locale.gen"
     echo "- generate the locales"
@@ -633,7 +635,7 @@ function set-locales() {
     echo "KEYMAP=${consoleKeyboardLayout}" >> /etc/vconsole.conf    # make settings for the console keyboard layout persistent
 }
 
-function config-network() {
+config-network() {
     echo "- setting hostname (/etc/hostname)"
     echo "${myHostname}" >> /etc/hostname                     # Create / config the hostname file
     echo "- create + config '/etc/hosts'"
@@ -649,7 +651,7 @@ function config-network() {
     systemctl enable NetworkManager
 }
 
-function set-password() {
+set-password() {
     # Parameter 1: userId
 
     echo "- changing password for '${1}' to configured initialPassword"
@@ -660,7 +662,7 @@ function set-password() {
     # chage -l "${1}"                                         # list password expiration and aging information for userId
 }
 
-function create-userAccount() {
+create-userAccount() {
     echo "- creating account, setting configured initial password; if configured: forcing password change + adding user to group 'libvirt'"
     for userId in "${arrUserId[@]}"; do
         #useradd -m -U -s /bin/bash -p "${initialPassword}" "${userId}" # not the safe way, but password is in the config anyway... # create new user including: set initial passwort using ${initialPassword} from config
@@ -672,7 +674,7 @@ function create-userAccount() {
     done
 }
 
-function config-sudoUser() {
+config-sudoUser() {
     echo "- config sudo user rights"
     for userId in "${arrSudoUser[@]}"; do
         #echo "${userId} ALL=(ALL) ALL" >> "/etc/sudoers.d/sudoUser"
@@ -681,7 +683,7 @@ function config-sudoUser() {
     echo "%wheel ALL=(ALL:ALL) ALL" >> "/etc/sudoers.d/wheel"
 }
 
-function install-grafics() {
+install-grafics() {
     if [ "${graficsCardInstalled}" = "true" ]; then
         echo "- installing configured grafics packages"
         #pacman -S --noconfirm --needed ${strListGraficsCardPackage}    # install packages for the grafics card
@@ -692,7 +694,7 @@ function install-grafics() {
     fi
 }
 
-function install-bootloader() {
+install-bootloader() {
     if [ "${bootloader}" = "grub" ]; then
         echo "- installing grub"
         #pacman -S --noconfirm grub                     # grub: install
@@ -731,7 +733,7 @@ function install-bootloader() {
     fi
 }
 
-function config-bootloader() {          # if $encryption = "true"
+config-bootloader() {          # if $encryption = "true"
     if [ "${bootloader}" = "grub" ]; then
         local uuidRootPartiton=""
         # Note: 'rootPartitionNo' not set in chroot, uses default value '0' from config (-> e.g. '/dev/vda0')
@@ -756,7 +758,7 @@ function config-bootloader() {          # if $encryption = "true"
     fi
 }
 
-function config-mkinitcpio() {          # if $encryption = "true"
+config-mkinitcpio() {          # if $encryption = "true"
     # modify MODULES:
     if [ "${filesystemType}" = "btrfs" ]; then
         sed -i 's/MODULES=()/MODULES=(btrfs)/g' "${pathToMkinitcpioConf}"
@@ -766,7 +768,7 @@ function config-mkinitcpio() {          # if $encryption = "true"
     sed -i -E 's/consolefont block filesystems/consolefont block encrypt filesystems/g' "${pathToMkinitcpioConf}"
 }
 
-function install-additionalPackages() {
+install-additionalPackages() {
     echo "- installing configured packages: standard, print, firewall, conflicting"
     pacman -S --noconfirm --needed ${strListAdditionalPkg}
 
@@ -790,14 +792,14 @@ function install-additionalPackages() {
     #echo "${zshSyntaxConf}" >> $userdir/.zshrc                     # TODO
 }
 
-function enable-service() {
+enable-service() {
     echo "- enabling services ..."
     for service in "${arrService[@]}"; do
         systemctl enable "${service}"
     done
 }
 
-function install-DesktopEnvironment() {
+install-DesktopEnvironment() {
     if [ "${installDesktopEnvironment}" = "true" ]; then
         case "${desktopEnvironmentName}" in
             "Gnome")
@@ -821,6 +823,6 @@ function install-DesktopEnvironment() {
 }
 
 
-function newFunction() {
+newFunction() {
     echo "# TODO: implement function '${FUNCNAME}'"
 }
