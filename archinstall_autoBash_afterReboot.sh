@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 # set -x   # enable debug mode
 
@@ -10,6 +11,7 @@
 # Licence              GPLv3
 # ----------------------------------------------------------------
 
+afterReboot="true"
 
 # ------------------
 # Config / Variables
@@ -31,8 +33,8 @@ source archinstall_autoBash.shlib # including the separate file containing the f
 # main
 # ----
 
-echo -e "\e[0;36m# --- Post-installation - after reboot --- \e[39m"
-echo -e "\e[0;31mExecute this script as a user with sudo privileges (not 'root' !) \e[39m"
+echo -e "\n\e[0;36m# --- Post-installation - after reboot --- \e[39m"
+echo -e "\e[0;31mExecute this script with a user with sudo privileges (not as 'root') \e[39m"
 
 echo -e "\n\e[0;35m## Install and config snapper-rollback (AUR) \e[39m"
 if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ] && [ "${snapperRollback}" = "true" ]; then
