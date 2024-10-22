@@ -63,7 +63,7 @@ if [ ${formatPartition} = "true" ]; then        # if formatting the partitions s
     echo -e "\n\e[0;35m## Formating the partitions\e[39m"
     
     # if encryption="true" + UEFI: the root partition will be encrypted with luks
-    format-partition "${device}" "${bootMode}" "${partitionType}" "${filesystemType}" "${fileSystemTypeEfi}" "${fatSize}" "${partitionLabelRoot}" "${partitionLabelEfi}" "${partitionLabelHome}"
+    format-partition "${device}" "${bootMode}" "${partitionType}" "${filesystemType}" "${fileSystemTypeEfi}" "${fatSize}" "${partitionLabelRoot}" "${partitionLabelEfi}" "${partitionLabelHome}" "${partitionLabelSwap}"
 fi
 
 if [ ${mountPartition} = "true" ]; then         # this setp is actually only needed for btrfs + subvolumes # if mounting of the partitions should be done by the script
@@ -101,8 +101,8 @@ fi
 
 
 # ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - after mounting partitions (+ all btrfs subvols) to /mnt --- before pacstrap"
-# read -r
+echo -e "\nPress Enter to continue - after mounting partitions (+ all btrfs subvols) to /mnt --- before pacstrap"
+read -r
 # ### TEST --------------------------------------------------------------------
 
 

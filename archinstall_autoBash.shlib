@@ -169,76 +169,75 @@ format-partition() {
     # Parameter 7: partitionLabelRoot
     # Parameter 8: partitionLabelEfi
     # Parameter 9: partitionLabelHome
+    # Parameter 10: partitionLabelSwap
 
     # TODO: check path of partition device name
 
+    # ### ---------------
+    # ### set partitionNo
+    # ### ---------------
     if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then                  # --- Bios + gpt
         # Partition No 1: empty
-        set-partitionNo "swap" "2"
-        set-partitionNo "root" "3"
-
-        mkswap "${1}${swapPartitionNo}"                                 # make swap-partition
-
-        if [ "${4}" = "btrfs" ]; then
-            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"    # format root-partition, btrfs, force (-f), blocksize (-n)
-        elif [ "${4}" = "ext4" ]; then
-            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"           # format root-partition, ext4, force (-F)
-        else
-            mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"              # format root-partition, other
-        fi
-
+        set-partitionNo "swap" "2" # e.g. sets: swapPartitionNo="2" (-> /dev/vda2 or /dev/nvme0n1p2 or /dev/mmcblk1p2 or ...)
+        set-partitionNo "root" "3" # e.g. sets: rootPartitionNo="3" (-> /dev/vda3 or /dev/nvme0n1p3 or /dev/mmcblk1p3 or ...)
+    
     elif [ "${2}" = "Bios" ] && [ "${3}" = "mbr" ]; then                # --- Bios + mbr
         set-partitionNo "swap" "1"
         set-partitionNo "root" "2"
-
-        mkswap "${1}${swapPartitionNo}"                                 # make swap-partition
-
-        if [ "${4}" = "btrfs" ]; then
-            mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"    # format root-partition, btrfs, force (-f), blocksize (-n)
-        elif [ "${4}" = "ext4" ]; then
-            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"           # format root-partition, ext4, force (-F)
-        else
-            mkfs."${4}" -L "${7}" "${1}${rootPartitionNo}"              # format root-partition
-        fi
-
+    
     else                                                                # --- Uefi + gpt
         set-partitionNo "efi" "1"
         set-partitionNo "swap" "2"
         set-partitionNo "root" "3"
-
-        mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}"         # format efi-partition
-        mkswap "${1}${swapPartitionNo}"                                 # make swap-partition
     fi
 
-# ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - function 'format-partition': before encrypting root disk"
-# read -r
-# ### TEST --------------------------------------------------------------------
+    # ### -----------------
+    # ### Format partitions
+    # ### -----------------
 
-    # TODO seperate function for encryption
-    if [ "${encryption}" = "true" ]; then # encryption # https://wiki.archlinux.org/title/Dm-crypt
-        # echo "${encryptionPassword}" | cryptsetup luksFormat -y -v --type luks2 --label "${encryptionRootName}" "${1}${rootPartitionNo}" --key-file -    # encrypt root partition # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Preparing_non-boot_partitions
+    # --- efi partition:
+    if [ -n "${efiPartitionNo}" ]; then # if efi-partition number is set (only when Uefi + gpt)
+        mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}" # format efi-partition
+    fi
+
+    if [ "${encryption}" = "true" ]; then
+        # https://wiki.archlinux.org/title/Dm-crypt
+
+        # --- START swap partition
+        # TODO: encryption # format swap-partition # https://wiki.archlinux.org/title/Dm-crypt/Swap_encryption#UUID_and_LABEL
+        mkswap "${1}${swapPartitionNo}" # make swap-partition
+        # --- END swap partition
+
+        # --- START root partition
+        #
         # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-luksFormat.8.en
         # https://wiki.archlinux.org/title/Dm-crypt/Device_encryption#Encrypting_devices_with_cryptsetup
         # GRUB's support for LUKS2 is limited; see GRUB#Encrypted /boot for details.
         echo -e "\nEnrypting root partition..."
         cryptsetup luksFormat --pbkdf pbkdf2 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Lable (-L) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
+        # echo "${encryptionPassword}" | cryptsetup luksFormat --pbkdf pbkdf2 -y -v --type luks2 --label "${encryptionRootName}" "${1}${rootPartitionNo}" --key-file -    # encrypt root partition # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Preparing_non-boot_partitions
 
-        # echo "${encryptionPassword}" | cryptsetup open -v --type luks2 "${1}${rootPartitionNo}" "${encryptionRootName}" --key-file -   # '-' : read from stdin -> echo
-        #cryptsetup open -v --type luks2 "${1}${rootPartitionNo}" "${encryptionRootName}"
         echo -e "\nOpening encrypted root partition..."
-        cryptsetup open "${1}${rootPartitionNo}" "${encryptionRootName}"
-                                                    # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-open.8.en
+        cryptsetup open "${1}${rootPartitionNo}" "${encryptionRootName}" # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-open.8.en
+        # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-open.8.en
+        # echo "${encryptionPassword}" | cryptsetup open -v --type luks2 "${1}${rootPartitionNo}" "${encryptionRootName}" --key-file -   # '-' : read from stdin -> echo
+        # cryptsetup open -v --type luks2 "${1}${rootPartitionNo}" "${encryptionRootName}"
         if [ "${4}" = "btrfs" ]; then
-            #mkfs."${4}" -f -L "${7}" -n 32k "${encryptionRootPath}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n)   # TODO: config variable for blocksize
-            #mkfs."${4}" -f "${encryptionRootPath}"
+            #mkfs."${4}" -f -L "${7}" -n 32k "${encryptionRootPath}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n) # TODO: config variable for blocksize
             mkfs."${4}" -f -L "${7}" "${encryptionRootPath}"
         elif [ "${4}" = "ext4" ]; then
-            mkfs."${4}" -F -L "${7}" "${encryptionRootPath}"                # format root-partition, ext4, force (-F), label (-l)   # encryptionRootPath e.g.: '/dev/mapper/cryptroot'
+            mkfs."${4}" -F -L "${7}" "${encryptionRootPath}"                # format root-partition, ext4, force (-F), label (-l) # encryptionRootPath e.g.: '/dev/mapper/cryptroot'
         else
             mkfs."${4}" "${encryptionRootPath}"                             # format root-partition, other filesystems
         fi
-    else                                                            # no encryption
+        # --- END root partition
+
+    else # no encryption
+        # --- START swap partition
+        mkswap "${1}${swapPartitionNo}"                                     # make swap-partition
+        # --- END swap partition
+
+        # --- START root partition
         if [ "${4}" = "btrfs" ]; then
             mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n)   # TODO: config variable for blocksize
         elif [ "${4}" = "ext4" ]; then
@@ -246,6 +245,7 @@ format-partition() {
         else
             mkfs."${4}" "${1}${rootPartitionNo}"                            # format root-partition, other filesystems
         fi
+        # --- END root partition
     fi
     
 }
