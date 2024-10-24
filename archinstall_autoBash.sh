@@ -62,7 +62,7 @@ fi
 if [ ${formatPartition} = "true" ]; then        # if formatting the partitions should be executed by the script
     echo -e "\n\e[0;35m## Formating the partitions\e[39m"
     
-    # if encryption="true" + UEFI: the root partition will be encrypted with luks
+    # if encryption="true": the root partition will be encrypted with luks
     format-partition "${device}" "${bootMode}" "${partitionType}" "${filesystemType}" "${fileSystemTypeEfi}" "${fatSize}" "${partitionLabelRoot}" "${partitionLabelEfi}" "${partitionLabelHome}" "${partitionLabelSwap}"
 fi
 
@@ -118,14 +118,27 @@ echo -e "\n\n\e[0;36m# --- Configure the system --- \e[39m"
 echo -e "\n\e[0;35m## Fstab \e[39m"
 echo "- generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
-#create-fstab                                   # creating individual fstab
-echo "- modify fstab..."
-modify-fstab "/mnt/etc/fstab"                   # e.g. btrfs: genfstab includes ...,subvolid=XXX,... in mount options, which we do not want (with regard to snapshots)
+# create-fstab # creating individual fstab
+
+# Swap enryption - https://wiki.archlinux.org/title/Dm-crypt/Swap_encryption#UUID_and_LABEL
+echo "- modify fstab (if btrfs: deleting mount option 'subvolid' (leaving just 'subvol') for all btrfs subvolumes)..."
+modify-fstab "/mnt/etc/fstab" # e.g. btrfs: genfstab includes ...,subvolid=XXX,... in mount options, which we do not want (with regard to snapshots)
+if [ "${encryption}" = "true" ]; then
+    echo "- adding entry for swap encryption to '/mnt/${pathToCrypttab}'..."
+    echo "${encryptionSwapCrypttab}" >> "/mnt/${pathToCrypttab}"
+    echo "- adding entry for encrypted swap partition to '/etc/fstab'..."
+    echo "# encrypted swap partition via ${pathToCrypttab} and LABEL=${partitionLabelSwap}" >> "/mnt/etc/fstab"
+    echo "/dev/mapper/swap none swap defaults 0 0" >> "/mnt/etc/fstab"
+fi
 
 
 # ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - after genfstab / modify fstab"
-# read -r
+echo -e "\n/mnt/${pathToCrypttab}:"
+cat "/mnt/${pathToCrypttab}"
+echo -e "\n/mnt/etc/fstab:"
+ls -la /mnt/dev/disk/by-label
+echo -e "\nPress Enter to continue - after genfstab / modify fstab and crypttab"
+read -r
 # ### TEST --------------------------------------------------------------------
 
 

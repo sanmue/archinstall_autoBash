@@ -88,4 +88,8 @@ echo -e "\n\e[0;35m## Install graphical user interface \e[39m"
 install-DesktopEnvironment
 
 echo -e "\n\e[0;35m## Install additional fonts \e[39m"
-if [ "${installFont}" = "true" ]; then pacman -S --noconfirm --needed ${strListFontPkg}; fi # do not double quote ${strListFontPkg} # TODO: could change to array
+if [ "${installFont}" = "true" ]; then 
+    pacman -S --noconfirm --needed ${strListFontPkg};
+else
+    echo "- Skipping since in config 'installFont' not set to 'true'"
+fi # do not double quote ${strListFontPkg} # TODO: could change to array
