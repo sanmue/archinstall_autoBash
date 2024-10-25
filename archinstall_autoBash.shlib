@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
-# set -x   # enable debug mode
+set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.shlib
@@ -75,6 +75,7 @@ partition-diskBios() {
     # Parameter 3: size of swap partition
 
     if [ "$1" = "gpt" ]; then
+        # partition type "gpt"
         (
         echo g   # --- create a new empty GPT partition table ---
         
@@ -83,47 +84,69 @@ partition-diskBios() {
         echo     # accept default value (Start first sector)
         echo +1M # partition size
         echo t   # change partition type
-        # echo     # accept default value (Partition No: 1)
         echo 4   # Type: Bios boot
 
-        echo n   # --- add a new partition: Swap ---
-        echo     # accept default value (Partition No: 2)
-        echo     # accept default value (Start of first sector)
-        echo +"${3}"M # partition size
-        echo t   # change partition type
-        echo     # accept default value (Partition No: 2)
-        echo 19  # Type: Linux swap
+        echo w   # Write changes
+        ) | sudo fdisk "${2}" 1>/dev/null
 
+        if [ "${swapType}" = "partition" ]; then
+            (
+            echo n   # --- add a new partition: Swap ---
+            echo     # accept default value (Partition No: 2)
+            echo     # accept default value (Start of first sector)
+            echo +"${3}"M # partition size
+            echo t   # change partition type
+            echo     # accept default value (Partition No: 2)
+            echo 19  # Type: Linux swap
+
+            echo w   # Write changes
+            ) | sudo fdisk "${2}" 1>/dev/null
+        fi
+
+        (
         echo n   # --- add a new partition: root ---
-        echo     # accept default value (Partition No: 3)
+        echo     # accept default value (Partition No: 3, or 2 (if no swap partition))
         echo     # accept default value (start of first sector)
-        echo     # accept default value (end of last sector (Remainder of device))
+        echo -1M # # leaves small unallocated space of 1MB at the end of the disk
+        echo t   # change partition type
+        echo
+        echo 23  # Type: Linux root (x86-64)
 
         echo w   # Write changes
         ) | sudo fdisk "${2}" 1>/dev/null
     else
         # partition type "mbr"
         (
-        echo o   # --- create a new empty MBR (DOS) partition table ---
-        
-        echo n   # --- add a new partition: Swap ---
-        echo p   # primary (partition type)
-        echo     # accept default value (Partition No: 1)
-        echo     # accept default value (Start of first sector)
-        echo +"${3}"M # partition size
-        echo t   # change partition type
-        echo     # accept default value (Partition No: 1)
-        echo 82  # Type: Linux swap / Solaris
+            echo o   # --- create a new empty MBR (DOS) partition table ---
+            echo w   # Write changes
+        ) | sudo fdisk "${2}" 1>/dev/null
 
+        if [ "${swapType}" = "partition" ]; then
+            (
+            echo n   # --- add a new partition: Swap ---
+            echo p   # primary (partition type)
+            echo     # accept default value (Partition No: 1)
+            echo     # accept default value (Start of first sector)
+            echo +"${3}"M # partition size
+            echo t   # change partition type
+            echo     # accept default value (Partition No: 1)
+            echo 82  # Type: Linux swap / Solaris
+            echo w   # Write changes
+            ) | sudo fdisk "${2}" 1>/dev/null
+        fi
+
+        (
         echo n   # --- add a new partition: root ---
         echo p   # primary (partition type)
-        echo     # accept default value (Partition No: 2)
+        echo     # accept default value (Partition No: 2, or 1 if no swap partition)
         echo     # accept default value (start of first sector)
         echo -1M # leaves small unallocated space of 1MB at the end of the disk
 
         echo w   # Write changes
         ) | sudo fdisk "${2}" 1>/dev/null
     fi
+
+    fdisk -l # display partitions
 }
 
 partition-diskUefi() {
@@ -142,21 +165,37 @@ partition-diskUefi() {
     echo     # accept default value (Partition No: 1)
     echo 1   # Type: EFI System
 
-    echo n   # --- add a new partition: Swap ---
-    echo     # accept default value (Partition No: 2)
-    echo     # accept default value (Start of first sector)
-    echo +"${2}"M # partition size
-    echo t   # change partition type
-    echo     # accept default value (Partition No: 2)
-    echo 19  # Type: Linux swap
+    echo w   # Write changes
+    ) | sudo fdisk "${1}" 1>/dev/null
+    
+    if [ "${swapType}" = "partition" ]; then
+        (
+        echo n   # --- add a new partition: Swap ---
+        echo     # accept default value (Partition No: 2)
+        echo     # accept default value (Start of first sector)
+        echo +"${2}"M # partition size
+        echo t   # change partition type
+        echo     # accept default value (Partition No: 2)
+        echo 19  # Type: Linux swap
+        echo w   # Write changes
+        ) | sudo fdisk "${1}" 1>/dev/null
+    fi
 
+    sleep 2 # test-workaround since sometimes creating root partition failed because of 'device busy' # TODO
+
+    (
     echo n   # --- add a new partition: root ---
     echo     # accept default value (Partition No: 3)
     echo     # accept default value (start of first sector)
     echo     # accept default value (end of last sector (Remainder of device))
+    echo t   # change partition type
+    echo
+    echo 23  # Type: Linux root (x86-64)
 
     echo w   # Write changes
     ) | sudo fdisk "${1}" 1>/dev/null
+
+    fdisk -l # display partitions
 }
 
 format-partition() {
@@ -178,38 +217,40 @@ format-partition() {
     # ### ---------------
     if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then                  # --- Bios + gpt
         # Partition No 1: empty
-        set-partitionNo "swap" "2" # e.g. sets: swapPartitionNo="2" (-> /dev/vda2 or /dev/nvme0n1p2 or /dev/mmcblk1p2 or ...)
-        set-partitionNo "root" "3" # e.g. sets: rootPartitionNo="3" (-> /dev/vda3 or /dev/nvme0n1p3 or /dev/mmcblk1p3 or ...)
+        if [ "${swapType}" = "partition" ]; then
+            set-partitionNo "swap" "2" # e.g. sets: swapPartitionNo="2" (-> /dev/vda2 or /dev/nvme0n1p2 or /dev/mmcblk1p2 or ...)
+            set-partitionNo "root" "3" # e.g. sets: rootPartitionNo="3" (-> /dev/vda3 or /dev/nvme0n1p3 or /dev/mmcblk1p3 or ...)
+        else
+            # no swap partion ('file' or 'none')
+            set-partitionNo "root" "2"
+        fi
     
     elif [ "${2}" = "Bios" ] && [ "${3}" = "mbr" ]; then                # --- Bios + mbr
-        set-partitionNo "swap" "1"
-        set-partitionNo "root" "2"
+        if [ "${swapType}" = "partition" ]; then
+            set-partitionNo "swap" "1"
+            set-partitionNo "root" "2"
+        else
+            # no swap partion ('file' or 'none')
+            set-partitionNo "root" "1"
+        fi
     
     else                                                                # --- Uefi + gpt
         set-partitionNo "efi" "1"
-        set-partitionNo "swap" "2"
-        set-partitionNo "root" "3"
+        if [ "${swapType}" = "partition" ]; then
+            set-partitionNo "swap" "2"
+            set-partitionNo "root" "3"
+        else
+            # no swap partion ('file' or 'none')
+            set-partitionNo "root" "2"
+        fi
     fi
 
     # ### -----------------
     # ### Format partitions
     # ### -----------------
 
-    # --- efi partition:
-    if [ -n "${efiPartitionNo}" ]; then # if efi-partition number is set (only when Uefi + gpt)
-        mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}" # format efi-partition
-    fi
-
     if [ "${encryption}" = "true" ]; then
         # https://wiki.archlinux.org/title/Dm-crypt
-
-        # --- START swap partition
-        # mkswap "${1}${swapPartitionNo}" # make swap-partition, no encryption
-        #
-        # https://wiki.archlinux.org/title/Dm-crypt/Swap_encryption#UUID_and_LABEL
-        # - It is more reliable to identify the correct partition by giving it a genuine UUID or LABEL.
-        mkfs.ext2 -L "${10}" "${1}${swapPartitionNo}" 1M # create small, empty, bogus filesystem to provide a persistent UUID or LABEL for the swap encryption.
-        # --- END swap partition
 
         # --- START root partition
         #
@@ -235,11 +276,17 @@ format-partition() {
         fi
         # --- END root partition
 
-    else # no encryption
-        # --- START swap partition
-        mkswap "${1}${swapPartitionNo}"                                     # make swap-partition
-        # --- END swap partition
+        # --- START swap
+        if [ "${swapType}" = "partition" ]; then
+            # mkswap "${1}${swapPartitionNo}" # make swap-partition, no encryption
+            #
+            # https://wiki.archlinux.org/title/Dm-crypt/Swap_encryption#UUID_and_LABEL
+            # - It is more reliable to identify the correct partition by giving it a genuine UUID or LABEL.
+            mkfs.ext2 -L "${10}" "${1}${swapPartitionNo}" 1M # create small, empty, bogus filesystem to provide a persistent UUID or LABEL for the swap encryption.
+        fi
+        # --- END swap
 
+    else # no encryption
         # --- START root partition
         if [ "${4}" = "btrfs" ]; then
             mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n)   # TODO: config variable for blocksize
@@ -249,8 +296,18 @@ format-partition() {
             mkfs."${4}" "${1}${rootPartitionNo}"                            # format root-partition, other filesystems
         fi
         # --- END root partition
+
+        # --- START swap partition
+        if [ "${swapType}" = "partition" ]; then
+            mkswap "${1}${swapPartitionNo}"                                 # make swap-partition
+        fi
+        # --- END swap partition
     fi
-    
+
+    # --- efi partition:
+    if [ ! "${efiPartitionNo}" = "0" ]; then # && [ "${2}" = "Uefi" ]; then # if efiPortitionNo hat not initial default vallue und bootMode = Uefi
+        mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}" # format efi-partition
+    fi
 }
 
 set-partitionNo() {
@@ -305,12 +362,13 @@ mount-partition() { # mounting all partitions (if btrfs: including subvolumes) a
     # Parameter 1: device (e.g. '/dev/vda')
     # Parameter 2: bootMode
     # Parameter 3: filesystemType
-    # Parameter 4: efiPartitionNo
-    # Parameter 5: swapPartitionNo
-    # Parameter 6: rootPartitionNo (e.g. '3')
+    # Parameter 4: efiPartitionNo  # (e.g. '1' -> P1:device + P4:this number = '/dev/vda1')
+    # Parameter 5: swapPartitionNo # (e.g. '2') # if no swap partition (swaptype 'file' or 'none') -> default '0' (see config file)
+    # Parameter 6: rootPartitionNo # (e.g. '3')
     # Parameter 7: mount target (e.g. /mnt)
 
-    # filsystem specific mount options:
+    # --- root partition - filsystem specific mount options
+    # ! root partition must be mounted first or it hides e.g. /mnt/efi !
     case "${3}" in
         "btrfs")
             # mount every subvolume and create related folder if necessary
@@ -402,16 +460,20 @@ mount-partition() { # mounting all partitions (if btrfs: including subvolumes) a
         ;;
     esac
 
-
     # --- SWAP
-    if [ "${encryption}" = "true" ]; then
-        echo "- Swap - config option 'encryption=true': not mounting swap at this point. Swap with encryption will be handled separately."
-    else
-        echo "- mounting swap..."
-        swapon "${1}${5}"                      # swap-partition # e.g. swapon /dev/vda2
+    if [ "${swapType}" = "partition" ]; then
+        if [ "${encryption}" = "true" ]; then
+            echo -e "\e[0;33m- Swap partition - config option 'encryption=true': not mounting swap at this point. Swap partition with encryption will be handled separately.\e[39m"
+        else
+            echo "- mounting swap..."
+            swapon "${1}${5}"                  # swap-partition # e.g. swapon /dev/vda2
+        fi
     fi
 
     # --- EFI
+    # ERROR: Failed to get canonical path of /efi when installing grub.
+    # - https://bbs.archlinux.org/viewtopic.php?id=267084
+    # - Mounting /mnt after /mnt/efi hides /mnt/efi beneath the new /mnt.
     if [ "${2}" = "Uefi" ]; then               # bootMode: Uefi
         echo "- creating mount target for efi-partition..."
         mkdir -p "${7}${pathEfi}"              # e.g. /mnt/efi or /mnt/boot/efi
@@ -449,10 +511,22 @@ create-fstab() {   # function not used; btrfs subvolumes get mounted and then ge
         fstabPath="/mnt/etc/fstab"   # "${fstabPath}"
         #fstabPath="/etc/fstab"      # "${fstabPath}"
 
-        # ### Bios + Uefi
-
         #touch "${fstabPath}"
         #echo "# <file system> <dir> <type> <options> <dump> <pass>" > "${fstabPath}"   # fstab with inital comments already available
+
+        # --- EFI-Partition (Uefi only)
+        if [ "${bootMode}" = "Uefi" ]; then
+            uuid=$(lsblk -n -o UUID "/dev/${deviceName}${efiPartitionNo}" | xargs)
+            echo -e "\n# /dev/${deviceName}${efiPartitionNo} LABEL=${partitionLabelEfi}" >> "${fstabPath}"
+            echo "UUID=${uuid} ${pathEfi} vfat defaults,noatime 0 2" >> "${fstabPath}"   # e.g. UUID=DE99-988D /efi vfat defaults,noatime 0 2
+        fi
+
+        # --- swap partition
+        if [ "${swapType}" = "partition" ]; then
+            uuid=$(lsblk -n -o UUID "/dev/${deviceName}${swapPartitionNo}" | xargs)
+            echo -e "\n# /dev/${deviceName}${swapPartitionNo} (swap)" >> "${fstabPath}"
+            echo "UUID=${uuid} none swap defaults 0 0" >> "${fstabPath}" # e.g.: UUID=656d357b-c3e8-4ae2-8122-1675c9e08edc none swap defaults 0 0
+        fi
 
         # --- root partition              
         uuid=$(lsblk -n -o UUID "/dev/${deviceName}${rootPartitionNo}" | xargs)
@@ -460,21 +534,7 @@ create-fstab() {   # function not used; btrfs subvolumes get mounted and then ge
 
         echo -e "\n# /dev/${deviceName}${rootPartitionNo} LABEL=${partitionLabelRoot}" >> "${fstabPath}"
         create-fstab4BtrfsRootPartition "${fstabPath}" "${uuid}" "/mnt"  # e.g.: # UUID=656d357b-c3e8-4ae2-8122-1675c9e08edc / btrfs subvol=/@,noatime,discard=async,compress=zstd,space_cache=v2 0 0
-
-        # --- swap partition
-        uuid=$(lsblk -n -o UUID "/dev/${deviceName}${swapPartitionNo}" | xargs)
-        echo -e "\n# /dev/${deviceName}${swapPartitionNo} (swap)" >> "${fstabPath}"
-        echo "UUID=${uuid} none swap defaults 0 0" >> "${fstabPath}"                     # e.g.: UUID=656d357b-c3e8-4ae2-8122-1675c9e08edc none swap defaults 0 0
-
-
-        # ### Uefi only --- EFI-Partition
-        if [ "${bootMode}" = "Uefi" ]; then
-            uuid=$(lsblk -n -o UUID "/dev/${deviceName}${efiPartitionNo}" | xargs)
-            echo -e "\n# /dev/${deviceName}${efiPartitionNo} LABEL=${partitionLabelEfi}" >> "${fstabPath}"
-            echo "UUID=${uuid} ${pathEfi} vfat defaults,noatime 0 2" >> "${fstabPath}"   # e.g. UUID=DE99-988D /efi vfat defaults,noatime 0 2
-        fi
-
-    else   # if not btrfs with ssd
+    else # if not btrfs
         genfstab -U /mnt >> "${fstabPath}"
     fi
 }
@@ -752,8 +812,8 @@ install-grafics() {
 install-bootloader() {
     if [ "${bootloader}" = "grub" ]; then
         echo "- installing grub"
-        #pacman -S --noconfirm grub                     # grub: install
-        if [ "${filesystemType}" = "btrfs" ]; then pacman -S --noconfirm grub grub-btrfs; else pacman -S --noconfirm grub; fi   # grub-btrfs
+        pacman -S --needed --noconfirm grub # install grub
+        # if [ "${filesystemType}" = "btrfs" ]; then pacman -S --noconfirm grub; else pacman -S --noconfirm grub; fi   # grub-btrfs
 
         if [ "${encryption}" = "true" ]; then 
             echo -e "\n\e[0;35m- Configuring the boot loader (encryption settings) \e[39m"
@@ -764,8 +824,8 @@ install-bootloader() {
         fi
 
 # ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - chroot: fct 'install-bootloader', after 'config-bootloader'"
-# read -r
+echo -e "\nPress Enter to continue - chroot: fct 'install-bootloader', after 'config-bootloader'"
+read -r
 # ### TEST --------------------------------------------------------------------
 
         if [ "${bootMode}" = "Bios" ]; then             # Bios
@@ -773,7 +833,7 @@ install-bootloader() {
             grub-install --target=i386-pc "${device}"
         else                                            # Uefi
             echo "- ... for Uefi boot mode"
-            pacman -S --noconfirm efibootmgr
+            pacman -S --needed --noconfirm efibootmgr
             grub-install --target=x86_64-efi --efi-directory="${pathEfi}" --bootloader-id="${bootloaderId}"
         fi
 
@@ -781,8 +841,8 @@ install-bootloader() {
         grub-mkconfig -o "${pathGrubCfg}"               # grub: create config
 
 # ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - chroot: end of fct 'install-bootloader'"
-# read -r
+echo -e "\nPress Enter to continue - chroot: end of fct 'install-bootloader'"
+read -r
 # ### TEST --------------------------------------------------------------------
 
     fi
