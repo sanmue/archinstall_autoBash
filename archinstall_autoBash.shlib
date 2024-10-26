@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
-set -x   # enable debug mode
+# set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.shlib
@@ -181,7 +181,7 @@ partition-diskUefi() {
         ) | sudo fdisk "${1}" 1>/dev/null
     fi
 
-    sleep 2 # test-workaround since sometimes creating root partition failed because of 'device busy' # TODO
+    # sleep 2 # TEST-workaround since sometimes creating root partition failed because of 'device busy' (VM on USB-device) # TODO
 
     (
     echo n   # --- add a new partition: root ---
@@ -216,7 +216,7 @@ format-partition() {
     # ### set partitionNo
     # ### ---------------
     if [ "${2}" = "Bios" ] && [ "${3}" = "gpt" ]; then                  # --- Bios + gpt
-        # Partition No 1: empty
+        # Partition No 1: empty, no formating
         if [ "${swapType}" = "partition" ]; then
             set-partitionNo "swap" "2" # e.g. sets: swapPartitionNo="2" (-> /dev/vda2 or /dev/nvme0n1p2 or /dev/mmcblk1p2 or ...)
             set-partitionNo "root" "3" # e.g. sets: rootPartitionNo="3" (-> /dev/vda3 or /dev/nvme0n1p3 or /dev/mmcblk1p3 or ...)
@@ -252,7 +252,7 @@ format-partition() {
     if [ "${encryption}" = "true" ]; then
         # https://wiki.archlinux.org/title/Dm-crypt
 
-        # --- START root partition
+        # --- START: root partition
         #
         # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-luksFormat.8.en
         # https://wiki.archlinux.org/title/Dm-crypt/Device_encryption#Encrypting_devices_with_cryptsetup
@@ -274,9 +274,9 @@ format-partition() {
         else
             mkfs."${4}" "${encryptionRootPath}"                             # format root-partition, other filesystems
         fi
-        # --- END root partition
+        # --- END: root partition
 
-        # --- START swap
+        # --- START: swap
         if [ "${swapType}" = "partition" ]; then
             # mkswap "${1}${swapPartitionNo}" # make swap-partition, no encryption
             #
@@ -284,30 +284,35 @@ format-partition() {
             # - It is more reliable to identify the correct partition by giving it a genuine UUID or LABEL.
             mkfs.ext2 -L "${10}" "${1}${swapPartitionNo}" 1M # create small, empty, bogus filesystem to provide a persistent UUID or LABEL for the swap encryption.
         fi
-        # --- END swap
+        # --- END: swap
 
     else # no encryption
-        # --- START root partition
+        # --- START: root partition
         if [ "${4}" = "btrfs" ]; then
             mkfs."${4}" -f -L "${7}" -n 32k "${1}${rootPartitionNo}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n)   # TODO: config variable for blocksize
         elif [ "${4}" = "ext4" ]; then
-            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"               # format root-partition, ext4, force (-F), label (-l)
+            mkfs."${4}" -F -L "${7}" "${1}${rootPartitionNo}"               # format root-partition, ext4, force (-F), label (-L)
         else
             mkfs."${4}" "${1}${rootPartitionNo}"                            # format root-partition, other filesystems
         fi
-        # --- END root partition
+        # --- END: root partition
 
-        # --- START swap partition
+        # --- START: swap partition
         if [ "${swapType}" = "partition" ]; then
             mkswap "${1}${swapPartitionNo}"                                 # make swap-partition
         fi
-        # --- END swap partition
+        # --- END: swap partition
     fi
 
-    # --- efi partition:
-    if [ ! "${efiPartitionNo}" = "0" ]; then # && [ "${2}" = "Uefi" ]; then # if efiPortitionNo hat not initial default vallue und bootMode = Uefi
+    # --- swapfile
+    # - will be done in function 'mount-partition', since then btrfs subols will be created, including subvol for swapfile
+    # - if not btrfs + subvol: could be done here, but want to keep it together
+
+    # --- START: efi partition:
+    if [ ! "${efiPartitionNo}" = "0" ]; then # && [ "${2}" = "Uefi" ]; then # if efiPartitionNo has not initial default value (from config) und bootMode = Uefi
         mkfs."${5}" -F "${6}" -n "${8}" "${1}${efiPartitionNo}" # format efi-partition
     fi
+    # --- END: efi partition:
 }
 
 set-partitionNo() {
@@ -366,7 +371,10 @@ mount-partition() { # mounting all partitions (if btrfs: including subvolumes) a
     # Parameter 5: swapPartitionNo # (e.g. '2') # if no swap partition (swaptype 'file' or 'none') -> default '0' (see config file)
     # Parameter 6: rootPartitionNo # (e.g. '3')
     # Parameter 7: mount target (e.g. /mnt)
-
+    # Parameter 8: swapFileName # only needed for swap file + NO btrfs with subvols (not for swap partition)
+    # Parameter 9: swapFilePath # only needed for swap file and btrfs + subvol (not for swap partition)
+    # Parameter 10: swapSize (only needed for swap file (not for swap partition))
+    
     # --- root partition - filsystem specific mount options
     # ! root partition must be mounted first or it hides e.g. /mnt/efi !
     case "${3}" in
@@ -461,6 +469,7 @@ mount-partition() { # mounting all partitions (if btrfs: including subvolumes) a
     esac
 
     # --- SWAP
+    # needs to be mounted AFTER mounting root at /mnt (see comment below for EFI)
     if [ "${swapType}" = "partition" ]; then
         if [ "${encryption}" = "true" ]; then
             echo -e "\e[0;33m- Swap partition - config option 'encryption=true': not mounting swap at this point. Swap partition with encryption will be handled separately.\e[39m"
@@ -468,12 +477,22 @@ mount-partition() { # mounting all partitions (if btrfs: including subvolumes) a
             echo "- mounting swap..."
             swapon "${1}${5}"                  # swap-partition # e.g. swapon /dev/vda2
         fi
+    elif [ "${swapType}" = "file" ]; then
+        if [ "${3}" = "btrfs" ]; then
+            # - https://wiki.archlinux.org/title/Btrfs#Swap_file
+            btrfs filesystem mkswapfile --size "${10}M" --uuid clear "${7}${9}"
+            swapon "${7}${9}"
+        else
+            # https://wiki.archlinux.org/title/Swap#Swap_file_creation
+            mkswap -U clear --size "${10}M" --file "${7}/${18}"
+            swapon "${7}/${8}"
+        fi
     fi
 
     # --- EFI
-    # ERROR: Failed to get canonical path of /efi when installing grub.
+    # if ERROR Failed to get canonical path of /efi when installing grub:
     # - https://bbs.archlinux.org/viewtopic.php?id=267084
-    # - Mounting /mnt after /mnt/efi hides /mnt/efi beneath the new /mnt.
+    # - Mounting /mnt AFTER /mnt/efi hides /mnt/efi beneath the new /mnt -> EFI partition needs to be mounted AFTER mounting root at /mnt
     if [ "${2}" = "Uefi" ]; then               # bootMode: Uefi
         echo "- creating mount target for efi-partition..."
         mkdir -p "${7}${pathEfi}"              # e.g. /mnt/efi or /mnt/boot/efi
@@ -761,7 +780,7 @@ config-network() {
     } >> /etc/hosts                                           # Create / config "/etc/hosts"
 
     echo "- installing network management software and enabling its systemd unit"
-    #pacman -S --noconfirm --needed "${strListNetworkPkg}"             # installing network management software and enabling its systemd unit so that it starts at boot
+    # pacman -S --noconfirm --needed "${strListNetworkPkg}"           # installing network management software and enabling its systemd unit so that it starts at boot
     pacman -S --noconfirm --needed ${strListNetworkPkg}             # installing network management software and enabling its systemd unit so that it starts at boot
     systemctl enable NetworkManager
 }
@@ -770,7 +789,7 @@ set-password() {
     # Parameter 1: userId
 
     echo "- changing password for '${1}' to configured initialPassword"
-    #echo "${1}":password | chpasswd                          # set passwort for userId; script stops and waits for user input
+    # echo "${1}":password | chpasswd                           # set passwort for userId; script stops and waits for user input
     printf "${1}:%s" "${initialPassword}" | chpasswd          # set passwort for userId, using ${initialPassword} from config   # or: sudo chpasswd <<<"${1}:${initialPassword}"
 
     if [ "${forceChangePassword}" = "true" ]; then passwd --expire "${1}"; echo "- forcing '${1}' to change password at next login"; fi     # forces the user to change password at next login
@@ -780,7 +799,7 @@ set-password() {
 create-userAccount() {
     echo "- creating account, setting configured initial password; if configured: forcing password change + adding user to group 'libvirt'"
     for userId in "${arrUserId[@]}"; do
-        #useradd -m -U -s /bin/bash -p "${initialPassword}" "${userId}" # not the safe way, but password is in the config anyway... # create new user including: set initial passwort using ${initialPassword} from config
+        # useradd -m -U -s /bin/bash -p "${initialPassword}" "${userId}" # not the safe way, but password is in the config anyway... # create new user including: set initial passwort using ${initialPassword} from config
         useradd -m -U -s /bin/bash "${userId}"                          # create new user
 
         set-password "${userId}"
@@ -792,7 +811,7 @@ create-userAccount() {
 config-sudoUser() {
     echo "- config sudo user rights"
     for userId in "${arrSudoUser[@]}"; do
-        #echo "${userId} ALL=(ALL) ALL" >> "/etc/sudoers.d/sudoUser"
+        # echo "${userId} ALL=(ALL) ALL" >> "/etc/sudoers.d/sudoUser"
         usermod -aG wheel "${userId}"   # if btrfs + snapper snapshot-folder '.snapshots' gets chown :wheel (in my ansible playbook, Repo 'ansible_workstation')
     done
     echo "%wheel ALL=(ALL:ALL) ALL" >> "/etc/sudoers.d/wheel"
@@ -801,7 +820,7 @@ config-sudoUser() {
 install-grafics() {
     if [ "${graficsCardInstalled}" = "true" ]; then
         echo "- installing configured grafics packages"
-        #pacman -S --noconfirm --needed ${strListGraficsCardPackage}    # install packages for the grafics card
+        # pacman -S --noconfirm --needed ${strListGraficsCardPackage}    # install packages for the grafics card
         if [ ! ${strListGraficsCardPackage} = "" ]; then pacman -S --noconfirm --needed ${strListGraficsCardPackage}; fi
         check-exitStatusLastCommand $?
     else
@@ -824,8 +843,8 @@ install-bootloader() {
         fi
 
 # ### TEST --------------------------------------------------------------------
-echo -e "\nPress Enter to continue - chroot: fct 'install-bootloader', after 'config-bootloader'"
-read -r
+# echo -e "\nPress Enter to continue - chroot: fct 'install-bootloader', after 'config-bootloader'"
+# read -r
 # ### TEST --------------------------------------------------------------------
 
         if [ "${bootMode}" = "Bios" ]; then             # Bios
@@ -841,8 +860,8 @@ read -r
         grub-mkconfig -o "${pathGrubCfg}"               # grub: create config
 
 # ### TEST --------------------------------------------------------------------
-echo -e "\nPress Enter to continue - chroot: end of fct 'install-bootloader'"
-read -r
+# echo -e "\nPress Enter to continue - chroot: end of fct 'install-bootloader'"
+# read -r
 # ### TEST --------------------------------------------------------------------
 
     fi
@@ -854,7 +873,7 @@ config-bootloader() {          # if $encryption = "true"
         # Note: 'rootPartitionNo' not set in chroot, uses default value '0' from config (-> e.g. '/dev/vda0')
         uuidRootPartiton=$(blkid | grep "LABEL=\"${encryptionRootName}\"" | cut -d '"' -f 2)    # /dev/vda3: UUID="32b092af-c623-4e01-853c-87725214980f" LABEL="cryptroot" TYPE="crypto_LUKS" PARTUUID="d0ba9d2d-ce65-4408-ad9e-2baf4aa11f5a"
                                                                                                 # needs a label to be set in function 'format-partition'
-        #uuidRootPartiton=$(blkid | grep "crypto_LUKS" | cut -d '"' -f 2)   # no label, only root partition encrypted # /dev/vda3: UUID="b68f1d17-ff77-452a-9651-ce32ca2baddf" TYPE="crypto_LUKS" PARTUUID="56eae391-fa31-4f21-92b5-9b7d69eef604"
+        # uuidRootPartiton=$(blkid | grep "crypto_LUKS" | cut -d '"' -f 2)   # no label, only root partition encrypted # /dev/vda3: UUID="b68f1d17-ff77-452a-9651-ce32ca2baddf" TYPE="crypto_LUKS" PARTUUID="56eae391-fa31-4f21-92b5-9b7d69eef604"
         
         echo "uuidRootPartiton: '${uuidRootPartiton}'"
         if [ -z $(echo "${uuidRootPartiton}" | xargs) ]; then
@@ -900,11 +919,11 @@ install-additionalPackages() {
         pacman -S --noconfirm --needed ${strListAdditionalPkg_VM}
         # TODO: config '/etc/libvirt/libvirtd.conf' # e.g. set: unix_sock_group = "libvirt" # unix_sock_rw_perms = "0770"
 
-        #pacmman -S -noconfirm --needed spice-vdagent   # TODO: only if the machine is a virtual machine: clipboard sharing Guest<->Host
+        # pacmman -S -noconfirm --needed spice-vdagent   # TODO: only if the machine is a virtual machine: clipboard sharing Guest<->Host
     fi
 
-    #pacman -S --noconfirm --needed "${strListAdditionalPkg_zsh}"   # TODO
-    #echo "${zshSyntaxConf}" >> $userdir/.zshrc                     # TODO
+    # pacman -S --noconfirm --needed "${strListAdditionalPkg_zsh}"   # TODO
+    # echo "${zshSyntaxConf}" >> $userdir/.zshrc                     # TODO
 }
 
 enable-service() {

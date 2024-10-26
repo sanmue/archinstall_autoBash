@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -x   # enable debug mode
+# set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.sh
@@ -68,8 +68,8 @@ fi
 
 
 # ### TEST --------------------------------------------------------------------
-echo -e "\nPress Enter to continue - after format-partition"
-read -r
+# echo -e "\nPress Enter to continue - after format-partition"
+# read -r
 # ### TEST --------------------------------------------------------------------
 
 
@@ -100,7 +100,9 @@ fi
 
 if [ ${mountPartition} = "true" ]; then         # preparation for installation   # if mounting of the partitions should be done by the script
     echo -e "\n\e[0;35m## Mounting all partitions for installation step \e[39m"
-    mount-partition "${device}" "${bootMode}" "${filesystemType}" "${efiPartitionNo}" "${swapPartitionNo}" "${rootPartitionNo}" "/mnt"
+    mount-partition "${device}" "${bootMode}" "${filesystemType}" "${efiPartitionNo}" "${swapPartitionNo}" "${rootPartitionNo}" "/mnt" "${swapFileName}" "${swapFilePath}" "${swapSize}"
+    # parameter 'swapFilePath' and 'swapSize' needed for swap file and btrfs + subvol (not for swap partition)
+    # parameter 'swapFileName' only needed for swap file + NO btrfs with subvols (not for swap partition)
 
     echo "Current block device list (after 'mount-partition'):"
     lsblk
@@ -108,8 +110,8 @@ fi
 
 
 # ### TEST --------------------------------------------------------------------
-echo -e "\nPress Enter to continue - after mounting partitions (+ all btrfs subvols) to /mnt --- before pacstrap"
-read -r
+# echo -e "\nPress Enter to continue - after mounting partitions (+ all btrfs subvols) to /mnt --- before pacstrap"
+# read -r
 # ### TEST --------------------------------------------------------------------
 
 
@@ -127,8 +129,8 @@ echo "- generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
 # ### TEST --------------------------------------------------------------------
-echo -e "\n/mnt/etc/fstab (before modification):"
-cat /mnt/etc/fstab
+# echo -e "\n/mnt/etc/fstab (before modification):"
+# cat /mnt/etc/fstab
 # ### TEST --------------------------------------------------------------------
 
 # create-fstab # creating individual fstab
@@ -146,13 +148,13 @@ fi
 
 
 # ### TEST --------------------------------------------------------------------
-echo -e "\n/mnt${pathToCrypttab}:"
-cat "/mnt${pathToCrypttab}"
-echo -e "\n/mnt/etc/fstab:"
-cat "/mnt/etc/fstab"
-# ls -la /mnt/dev/disk/by-label
-echo -e "\nPress Enter to continue - after genfstab / modify fstab and crypttab"
-read -r
+# echo -e "\n/mnt${pathToCrypttab}:"
+# cat "/mnt${pathToCrypttab}"
+# echo -e "\n/mnt/etc/fstab:"
+# cat "/mnt/etc/fstab"
+# # ls -la /mnt/dev/disk/by-label
+# echo -e "\nPress Enter to continue - after genfstab / modify fstab and crypttab"
+# read -r
 # ### TEST --------------------------------------------------------------------
 
 
@@ -189,8 +191,8 @@ fi
 
 
 # ### TEST --------------------------------------------------------------------
-echo -e "\nPress Enter to continue - before reboot"
-read -r
+# echo -e "\nPress Enter to continue - before reboot"
+# read -r
 # ### TEST --------------------------------------------------------------------
 
 

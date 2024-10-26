@@ -32,6 +32,7 @@ Here are some points of the current default configuration:
   - or BIOS / MBR: set MBR manually in config
 - GRUB Bootloader
 - Enryption
+- swap file
 - Grafics Cards / Drivers (detected automatically, no 32bit support), needs more testing
   - AMD: should work
   - Intel: needs manual config, not testet, see Arch Wiki
@@ -61,6 +62,7 @@ Here are some points of the current default configuration:
   - but you will still need to consult the wiki to install the correct packages for your system, especially for NVIDIA and Intel.
 - installing a Desktop Environment (optional via config)
 - encryption (optional via config)
+- swap: partition, file or none (set via config)
 
 ## Limitations
 
