@@ -39,15 +39,19 @@ Here are some points of the current default configuration:
   - NVIDIA: needs manual config, not testet, see Arch Wiki
 - Gnome Desktop Environment
   - with additional packages: Firefox and VLC Media Player
+- Post-install (after reboot):
+  - snapper-rollback, ['zram'](https://wiki.archlinux.org/title/Zram)
 
 ### Start installation of Arch Linux as configured
 
-- start the initial script
+- start the initial script in the cloned git repo folder
   - `./archinstall_autoBash.sh`
-  - remember to make the script files executable first, or simply all files in the current folder: `chmod +x *`
-- after reboot: clone the repo again and `cd` into it (for instructions: see further above)
-  - as a user with sudo privileges execute the script `archinstall_autoBash_afterReboot.sh`, which will install and configure snapper-rollback (if set to 'true' in config file (and also for btrfs filesytem and snapper))
-  - `./archinstall_autoBash_afterReboot.sh`
+  - remember to make the script files executable first, or simply all files in the folder: `chmod +x *`
+- after reboot:
+  - clone the repo again and `cd` into it (for instructions: see further above)
+- execute the script: `./archinstall_autoBash_afterReboot.sh` (as a user with sudo privileges)
+  - installs 'snapper-rollback', zram
+  - if set in config file
 
 ## Features
 
@@ -63,6 +67,7 @@ Here are some points of the current default configuration:
 - installing a Desktop Environment (optional via config)
 - encryption (optional via config)
 - swap: partition, file or none (set via config)
+- zram (set via config)
 
 ## Limitations
 

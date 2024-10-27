@@ -720,14 +720,18 @@ config-snapperRollback() { # called in a separate script after reboot
     local srcf="${3}" # snapperRollbackConfig file 
 
     echo "Download and install snapper-rollback (AUR)..."
-    # echo "(Initial-)Password '${initialPassword}' can be used if asked"
-    # su - USERID -c "curl -L -O https://aur.archlinux.org/cgit/aur.git/snapshot/snapper-rollback.tar.gz" # user not yet available in chroot
-    curl -L -O https://aur.archlinux.org/cgit/aur.git/snapshot/snapper-rollback.tar.gz
-    tar -xf snapper-rollback.tar.gz
-    cd snapper-rollback || return
-    makepkg --noconfirm --needed -sic
-    cd .. || return
-    rm -rf snapper-rollback snapper-rollback.tar.gz
+    if [[ $(command -v snapper-rollback) ]]; then
+        echo -e "\e[1;33m- 'snapper-rollback' is already installed \e[39m"
+    else
+        # echo "(Initial-)Password '${initialPassword}' can be used if asked"
+        # su - USERID -c "curl -L -O https://aur.archlinux.org/cgit/aur.git/snapshot/snapper-rollback.tar.gz" # user not yet available in chroot
+        curl -L -O https://aur.archlinux.org/cgit/aur.git/snapshot/snapper-rollback.tar.gz
+        tar -xf snapper-rollback.tar.gz
+        cd snapper-rollback || return
+        makepkg --noconfirm --needed -sic
+        cd .. || return
+        rm -rf snapper-rollback snapper-rollback.tar.gz
+    fi
 
     echo -e "Modify snapperRollbackConfig: set snapper snapshots subvolume name to configured subvolume name '${sss}'..."
     # currently set in config: @snapshots # which we used in the config (if not changed manually), so ther should be no change necessary
