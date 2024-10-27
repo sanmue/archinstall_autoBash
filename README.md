@@ -32,7 +32,7 @@ Here are some points of the current default configuration:
   - or BIOS / MBR: set MBR manually in config
 - GRUB Bootloader
 - Enryption
-- swap file
+- (no swap file or swap partition, see 'zram' further below (Post-install))
 - Grafics Cards / Drivers (detected automatically, no 32bit support), needs more testing
   - AMD: should work
   - Intel: needs manual config, not testet, see Arch Wiki
@@ -40,7 +40,7 @@ Here are some points of the current default configuration:
 - Gnome Desktop Environment
   - with additional packages: Firefox and VLC Media Player
 - Post-install (after reboot):
-  - snapper-rollback, ['zram'](https://wiki.archlinux.org/title/Zram)
+  - snapper-rollback, ['zram'](https://wiki.archlinux.org/title/Zram) used as swap 
 
 ### Start installation of Arch Linux as configured
 
