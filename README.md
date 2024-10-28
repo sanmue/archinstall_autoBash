@@ -31,7 +31,7 @@ Here are some points of the current default configuration:
 - UEFI / GPT or BIOS / GPT (detected automatically)
   - or BIOS / MBR: set MBR manually in config
 - GRUB Bootloader
-- Enryption
+- Enryption + keyfile to automatically decrypt root partition on boot
 - (no swap file or swap partition, see 'zram' further below (Post-install))
 - Grafics Cards / Drivers (detected automatically, no 32bit support), needs more testing
   - AMD: should work
@@ -40,7 +40,7 @@ Here are some points of the current default configuration:
 - Gnome Desktop Environment
   - with additional packages: Firefox and VLC Media Player
 - Post-install (after reboot):
-  - snapper-rollback, ['zram'](https://wiki.archlinux.org/title/Zram) used as swap 
+  - snapper-rollback, ['zram'](https://wiki.archlinux.org/title/Zram) used as swap
 
 ### Start installation of Arch Linux as configured
 
@@ -65,7 +65,7 @@ Here are some points of the current default configuration:
   - for AMD it should work (works on my machine `;-)`)
   - but you will still need to consult the wiki to install the correct packages for your system, especially for NVIDIA and Intel.
 - installing a Desktop Environment (optional via config)
-- encryption (optional via config)
+- encryption + keyfile (each optional via config)
 - swap: partition, file or none (set via config)
 - zram (set via config)
 

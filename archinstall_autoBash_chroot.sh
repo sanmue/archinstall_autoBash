@@ -55,6 +55,13 @@ echo -e "\n\e[0;35m## Boot loader installation \e[39m"
 install-bootloader   # including config if encryption = true
 
 if [ "${encryption}" = "true" ]; then
+    echo -e "\n\e[0;35m## Create and store keyfile \e[39m"
+    if [ "${keyfile}" = "true" ]; then
+        dd bs=512 count=4 if=/dev/random iflag=fullblock | install -m 0600 /dev/stdin "${keyfilePath}"
+        echo -e "- Configuring LUKS to make use of the keyfile"
+        cryptsetup luksAddKey "${rootPartition}" "${keyfilePath}" # e.g.: cryptsetup luksAddKey /dev/vda2 /etc/cryptsetup-keys.d/crypto_keyfile.key
+    fi
+
     echo -e "\n\e[0;35m## Initramfs \e[39m"
     # Initramfs: For LVM, system encryption or RAID, modify mkinitcpio.conf(5) and recreate the initramfs image
 

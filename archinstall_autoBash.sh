@@ -162,7 +162,8 @@ echo "- copy necessary script/files to root-user directory on new root (/mnt/roo
 rsync -aPhEv archinstall_autoBash_chroot.sh /mnt/root/
 rsync -aPhEv archinstall_autoBash.config /mnt/root/
 rsync -aPhEv archinstall_autoBash.shlib /mnt/root/
-rsync -aPhEv "${fileDeviceName}" /mnt/root/
+rsync -aPhEv "${fileDeviceName}" /mnt/root/          # e.g. vda
+rsync -aPhEv "${fileRootPartition}" /mnt/root/       # e.g. /dev/vda2
 # make them executable:
 chmod +x /mnt/root/archinstall_autoBash_chroot.sh
 chmod +x /mnt/root/archinstall_autoBash.config
@@ -181,6 +182,7 @@ rm /mnt/root/archinstall_autoBash_chroot.sh
 rm /mnt/root/archinstall_autoBash.config
 rm /mnt/root/archinstall_autoBash.shlib
 rm "/mnt/root/${fileDeviceName}"
+rm "/mnt/root/${fileRootPartition}"
 
 
 # config snapper:

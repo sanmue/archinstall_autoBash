@@ -245,6 +245,12 @@ format-partition() {
         fi
     fi
 
+    # ### ---
+    # Save device root partition to file (e.g.: /dev/vda2)
+    # - will be read from in chroot, needed for keyfile: cryptsetup luksAddKey /dev/vda2 ...
+    # ### ---
+    echo "${1}${rootPartitionNo}" | tee "${fileRootPartition}"
+
     # ### -----------------
     # ### Format partitions
     # ### -----------------
@@ -871,7 +877,7 @@ install-bootloader() {
     fi
 }
 
-config-bootloader() {          # if $encryption = "true"
+config-bootloader() { # if $encryption = "true"
     if [ "${bootloader}" = "grub" ]; then
         local uuidRootPartiton=""
         # Note: 'rootPartitionNo' not set in chroot, uses default value '0' from config (-> e.g. '/dev/vda0')
@@ -887,12 +893,17 @@ config-bootloader() {          # if $encryption = "true"
             read -r -p "Enter UUID: " uuidRootPartiton
         fi
 
-        sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartiton}:${encryptionRootName} root=${encryptionRootPath}|g" /etc/default/grub   # GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"
+        # GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"
+        if [ "${keyfile}" = "true" ]; then
+            sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartiton}:${encryptionRootName} root=${encryptionRootPath} cryptkey=rootfs:${keyfilePath}|g" /etc/default/grub
+        else
+            sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartiton}:${encryptionRootName} root=${encryptionRootPath}|g" /etc/default/grub
+        fi
 
         # enable booting from LUKS encrypted devices:
         sed -i 's|#GRUB_ENABLE_CRYPTODISK=y|GRUB_ENABLE_CRYPTODISK=y|g' /etc/default/grub
 
-        # sudo grub-mkconfig -o "$pathGrubCfg"   # not necessary anymore, will be done in function 'install-bootloader' after this function ()'config-bootloader') finishes
+        # sudo grub-mkconfig -o "$pathGrubCfg"   # not necessary anymore, will be done in function 'install-bootloader' after this function finishes
     fi
 }
 
@@ -902,8 +913,15 @@ config-mkinitcpio() {          # if $encryption = "true"
         sed -i 's/MODULES=()/MODULES=(btrfs)/g' "${pathToMkinitcpioConf}"
     fi
 
+    # modify FILES:
+    if [ "${encryption}" = "true" ] && [ "${keyfile}" = "true" ]; then
+        sed -i "s|FILES=()|FILES=(${keyfilePath})|g" "${pathToMkinitcpioConf}"
+    fi
+
     # modify HOOKS:
-    sed -i -E 's/consolefont block filesystems/consolefont block encrypt filesystems/g' "${pathToMkinitcpioConf}"
+    if [ "${encryption}" = "true" ]; then
+        sed -i -E 's/consolefont block filesystems/consolefont block encrypt filesystems/g' "${pathToMkinitcpioConf}"
+    fi
 }
 
 install-additionalPackages() {
