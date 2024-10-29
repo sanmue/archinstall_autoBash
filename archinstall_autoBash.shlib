@@ -843,19 +843,14 @@ install-bootloader() {
         echo "- installing grub"
         pacman -S --needed --noconfirm grub # install grub
         # if [ "${filesystemType}" = "btrfs" ]; then pacman -S --noconfirm grub; else pacman -S --noconfirm grub; fi   # grub-btrfs
+        config-bootloader
 
-        if [ "${encryption}" = "true" ]; then 
-            echo -e "\n\e[0;35m- Configuring the boot loader (encryption settings) \e[39m"
-            # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Configuring_the_boot_loader
-            # In order to unlock the encrypted root partition at boot
-
-            config-bootloader
-        fi
 
 # ### TEST --------------------------------------------------------------------
 # echo -e "\nPress Enter to continue - chroot: fct 'install-bootloader', after 'config-bootloader'"
 # read -r
 # ### TEST --------------------------------------------------------------------
+
 
         if [ "${bootMode}" = "Bios" ]; then             # Bios
             echo "- ... for Bios boot mode"
@@ -869,45 +864,53 @@ install-bootloader() {
         echo "- creating Grub config file"
         grub-mkconfig -o "${pathGrubCfg}"               # grub: create config
 
+
 # ### TEST --------------------------------------------------------------------
 # echo -e "\nPress Enter to continue - chroot: end of fct 'install-bootloader'"
 # read -r
 # ### TEST --------------------------------------------------------------------
 
+
     fi
 }
 
-config-bootloader() { # if $encryption = "true"
-    if [ "${bootloader}" = "grub" ]; then
-        local uuidRootPartiton=""
-        # Note: 'rootPartitionNo' not set in chroot, uses default value '0' from config (-> e.g. '/dev/vda0')
-        uuidRootPartiton=$(blkid | grep "LABEL=\"${encryptionRootName}\"" | cut -d '"' -f 2)    # /dev/vda3: UUID="32b092af-c623-4e01-853c-87725214980f" LABEL="cryptroot" TYPE="crypto_LUKS" PARTUUID="d0ba9d2d-ce65-4408-ad9e-2baf4aa11f5a"
-                                                                                                # needs a label to be set in function 'format-partition'
-        # uuidRootPartiton=$(blkid | grep "crypto_LUKS" | cut -d '"' -f 2)   # no label, only root partition encrypted # /dev/vda3: UUID="b68f1d17-ff77-452a-9651-ce32ca2baddf" TYPE="crypto_LUKS" PARTUUID="56eae391-fa31-4f21-92b5-9b7d69eef604"
-        
-        echo "uuidRootPartiton: '${uuidRootPartiton}'"
-        if [ -z $(echo "${uuidRootPartiton}" | xargs) ]; then
-            echo "--- blkid:"
-            blkid
-            echo -e "\e[0;31mUUID of root partition (NOT the mapper device !) could not be defined, please enter manually.\e[39m"
-            read -r -p "Enter UUID: " uuidRootPartiton
+config-bootloader() {
+    if [ "${encryption}" = "true" ]; then
+        echo -e "\n\e[0;35m- Configuring the boot loader (encryption settings) \e[39m"
+        # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Configuring_the_boot_loader
+        # In order to unlock the encrypted root partition at boot
+
+        if [ "${bootloader}" = "grub" ]; then
+            local uuidRootPartiton=""
+            # Note: 'rootPartitionNo' not set in chroot, uses default value '0' from config (-> e.g. '/dev/vda0')
+            uuidRootPartiton=$(blkid | grep "LABEL=\"${encryptionRootName}\"" | cut -d '"' -f 2)    # /dev/vda3: UUID="32b092af-c623-4e01-853c-87725214980f" LABEL="cryptroot" TYPE="crypto_LUKS" PARTUUID="d0ba9d2d-ce65-4408-ad9e-2baf4aa11f5a"
+                                                                                                    # needs a label to be set in function 'format-partition'
+            # uuidRootPartiton=$(blkid | grep "crypto_LUKS" | cut -d '"' -f 2)   # no label, only root partition encrypted # /dev/vda3: UUID="b68f1d17-ff77-452a-9651-ce32ca2baddf" TYPE="crypto_LUKS" PARTUUID="56eae391-fa31-4f21-92b5-9b7d69eef604"
+            
+            echo "uuidRootPartiton: '${uuidRootPartiton}'"
+            if [ -z $(echo "${uuidRootPartiton}" | xargs) ]; then
+                echo "--- blkid:"
+                blkid
+                echo -e "\e[0;31mUUID of root partition (NOT the mapper device !) could not be defined, please enter manually.\e[39m"
+                read -r -p "Enter UUID: " uuidRootPartiton
+            fi
+
+            # GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"
+            if [ "${keyfile}" = "true" ]; then
+                sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartiton}:${encryptionRootName} root=${encryptionRootPath} cryptkey=rootfs:${keyfilePath}|g" /etc/default/grub
+            else
+                sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartiton}:${encryptionRootName} root=${encryptionRootPath}|g" /etc/default/grub
+            fi
+
+            # enable booting from LUKS encrypted devices:
+            sed -i 's|#GRUB_ENABLE_CRYPTODISK=y|GRUB_ENABLE_CRYPTODISK=y|g' /etc/default/grub
+
+            # sudo grub-mkconfig -o "$pathGrubCfg"   # not necessary anymore, will be done in function 'install-bootloader' after this function finishes
         fi
-
-        # GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"
-        if [ "${keyfile}" = "true" ]; then
-            sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartiton}:${encryptionRootName} root=${encryptionRootPath} cryptkey=rootfs:${keyfilePath}|g" /etc/default/grub
-        else
-            sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartiton}:${encryptionRootName} root=${encryptionRootPath}|g" /etc/default/grub
-        fi
-
-        # enable booting from LUKS encrypted devices:
-        sed -i 's|#GRUB_ENABLE_CRYPTODISK=y|GRUB_ENABLE_CRYPTODISK=y|g' /etc/default/grub
-
-        # sudo grub-mkconfig -o "$pathGrubCfg"   # not necessary anymore, will be done in function 'install-bootloader' after this function finishes
     fi
 }
 
-config-mkinitcpio() {          # if $encryption = "true"
+config-mkinitcpio() {
     # modify MODULES:
     if [ "${filesystemType}" = "btrfs" ]; then
         sed -i 's/MODULES=()/MODULES=(btrfs)/g' "${pathToMkinitcpioConf}"

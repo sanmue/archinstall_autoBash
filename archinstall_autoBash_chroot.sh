@@ -52,26 +52,26 @@ install-grafics
 # https://wiki.archlinux.org/title/Mkinitcpio#Manual_generation
 
 echo -e "\n\e[0;35m## Boot loader installation \e[39m"
-install-bootloader   # including config if encryption = true
+install-bootloader # including config if encryption = true
 
-if [ "${encryption}" = "true" ]; then
-    echo -e "\n\e[0;35m## Create and store keyfile \e[39m"
-    if [ "${keyfile}" = "true" ]; then
-        dd bs=512 count=4 if=/dev/random iflag=fullblock | install -m 0600 /dev/stdin "${keyfilePath}"
-        echo -e "- Configuring LUKS to make use of the keyfile"
-        cryptsetup luksAddKey "${rootPartition}" "${keyfilePath}" # e.g.: cryptsetup luksAddKey /dev/vda2 /etc/cryptsetup-keys.d/crypto_keyfile.key
-    fi
-
-    echo -e "\n\e[0;35m## Initramfs \e[39m"
-    # Initramfs: For LVM, system encryption or RAID, modify mkinitcpio.conf(5) and recreate the initramfs image
-
-    echo -e "\n\e[0;35m- Configuring mkinitcpio \e[39m"
-    # modify mkinitcpio.conf:
-    config-mkinitcpio
-    # regenerate initramfs:
-    # mkinitcpio -p "${kernelPackage}"  # e.g. mkinitcpio -p linux
-    mkinitcpio -P                       # (re-)generate all existing presets
+echo -e "\n\e[0;35m## Create and store keyfile \e[39m"
+if [ "${encryption}" = "true" ] && [ "${keyfile}" = "true" ]; then
+    dd bs=512 count=4 if=/dev/random iflag=fullblock | install -m 0600 /dev/stdin "${keyfilePath}"
+    echo -e "- Configuring LUKS to make use of the keyfile. Enter encryption passphrase for root partition:"
+    cryptsetup luksAddKey "${rootPartition}" "${keyfilePath}" # e.g.: cryptsetup luksAddKey /dev/vda2 /etc/cryptsetup-keys.d/crypto_keyfile.key
+else
+    echo "- Skipping, keyfile: '${keyfile}', encryption: '${encryption}'"
 fi
+
+echo -e "\n\e[0;35m## Initramfs \e[39m"
+# Initramfs: For LVM, system encryption or RAID, modify mkinitcpio.conf(5) and recreate the initramfs image
+echo -e "\n\e[0;35m- Configuring mkinitcpio \e[39m"
+# modify mkinitcpio.conf:
+config-mkinitcpio
+# regenerate initramfs:
+# mkinitcpio -p "${kernelPackage}"  # e.g. mkinitcpio -p linux
+mkinitcpio -P                       # (re-)generate all existing presets
+
 
 # ### TEST --------------------------------------------------------------------
 # echo -e "\nPress Enter to continue - chroot: after configuring + executing mkinitcpio "
