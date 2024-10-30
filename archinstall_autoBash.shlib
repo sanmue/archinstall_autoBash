@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
-# set -x   # enable debug mode
+set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.shlib
@@ -249,7 +249,7 @@ format-partition() {
     # Save device root partition to file (e.g.: /dev/vda2)
     # - will be read from in chroot, needed for keyfile: cryptsetup luksAddKey /dev/vda2 ...
     # ### ---
-    echo "${1}${rootPartitionNo}" | tee "${fileRootPartition}"
+    echo "${1}${rootPartitionNo}" | tee "${fileRootPartition}" >/dev/null
 
     # ### -----------------
     # ### Format partitions
@@ -906,6 +906,24 @@ config-bootloader() {
             sed -i 's|#GRUB_ENABLE_CRYPTODISK=y|GRUB_ENABLE_CRYPTODISK=y|g' /etc/default/grub
 
             # sudo grub-mkconfig -o "$pathGrubCfg"   # not necessary anymore, will be done in function 'install-bootloader' after this function finishes
+        fi
+    fi
+
+    if [ "${zram}" = "true" ] && [ "${bootloader}" = "grub" ]; then
+        # - https://wiki.archlinux.org/title/Zram#Using_zram-generator
+        echo -e "\n\e[0;35m- Configuring the boot loader (zram settings) \e[39m"
+        echo -e "'zwap' prevents 'zram' from being used effectively, will be disabled permanently via kernel parameter..." # 'zswap' is used by default in Arch Linux
+        zswapDisable_kernelOption='zswap.enabled=0'
+        if [[ -z $(grep "${zswapDisable_kernelOption}" "${grubConfDefaultPath}") ]]; then # wenn kernel option noch nicht in ${grubConfDefaultPath}
+            string=$(grep "GRUB_CMDLINE_LINUX_DEFAULT=" "${grubConfDefaultPath}") # grubConfDefaultPath set in config file
+            tmpString="${string%?}" # remove last character (")
+            tmpString+=" ${zswapDisable_kernelOption}\""
+            sed -i "s|${string}|${tmpString}|g" "${grubConfDefaultPath}"
+            echo -e "Recreate grub.cfg, including the new kernel option..."
+            grub-mkconfig -o "${pathGrubCfg}"
+        else
+            echo -e "\e[1;33m- Kernel option to disable 'zswap' already in '${grubConfDefaultPath}' \e[39m"
+            # head -n 8 -v "${grubConfDefaultPath}"
         fi
     fi
 }

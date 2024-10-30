@@ -45,48 +45,54 @@ else
     echo "Filesystem type ist not 'btrfs' and/or snapshots is set to 'false' and/or snapperRollback ist set to 'false'"
 fi
 
+# ### --------------------------------------------------------------------------------
+# zram: moved to archinstall_autoBash_chroot.sh
+# ###
+#
 # --- zram:
-echo -e "\n\e[0;35m## Install and config 'zram' (usage as swap) \e[39m"
-if [ "${zram}" = "true" ]; then
-    # - https://wiki.archlinux.org/title/Zram#Using_zram-generator
-    echo -e "'zwap' prevents 'zram' from being used effectively, will be disabled permanently..." # 'zswap' is used by default in Arch Linux
-    zswapDisable_kernelOption='zswap.enabled=0'
-    grubConfDefaultPath="/etc/default/grub"
-    if [[ -z $(grep "${zswapDisable_kernelOption}" "${grubConfDefaultPath}") ]]; then # wenn kernel option noch nicht in ${grubConfDefaultPath}
-        string=$(grep "GRUB_CMDLINE_LINUX_DEFAULT=" "${grubConfDefaultPath}")
-        tmpString="${string%?}" # remove last character (")
-        tmpString+=" ${zswapDisable_kernelOption}\""
-        sudo sed -i "s|${string}|${tmpString}|g" "${grubConfDefaultPath}"
-        echo -e "Recreate grub.cfg, including the new kernel option..."
-        sudo grub-mkconfig -o "${pathGrubCfg}"
-    else
-        echo -e "\e[1;33m- Kernel option to disable 'zswap' already in '${grubConfDefaultPath}' \e[39m"
-        # head -n 8 -v "${grubConfDefaultPath}"
-    fi
+# echo -e "\n\e[0;35m## Install and config 'zram' (usage as swap) \e[39m"
+# if [ "${zram}" = "true" ]; then
+#     # - https://wiki.archlinux.org/title/Zram#Using_zram-generator
+#     echo -e "'zwap' prevents 'zram' from being used effectively, will be disabled permanently via kernel parameter..." # 'zswap' is used by default in Arch Linux
+#     zswapDisable_kernelOption='zswap.enabled=0'
+#     grubConfDefaultPath="/etc/default/grub"
+#     if [[ -z $(grep "${zswapDisable_kernelOption}" "${grubConfDefaultPath}") ]]; then # wenn kernel option noch nicht in ${grubConfDefaultPath}
+#         string=$(grep "GRUB_CMDLINE_LINUX_DEFAULT=" "${grubConfDefaultPath}")
+#         tmpString="${string%?}" # remove last character (")
+#         tmpString+=" ${zswapDisable_kernelOption}\""
+#         sudo sed -i "s|${string}|${tmpString}|g" "${grubConfDefaultPath}"
+#         echo -e "Recreate grub.cfg, including the new kernel option..."
+#         sudo grub-mkconfig -o "${pathGrubCfg}"
+#     else
+#         echo -e "\e[1;33m- Kernel option to disable 'zswap' already in '${grubConfDefaultPath}' \e[39m"
+#         # head -n 8 -v "${grubConfDefaultPath}"
+#     fi
 
-    # echo -e "- check zswap state (if '...enabled: N' -> zswap is disabled):" # needs reboot first
-    # grep -r . /sys/module/zswap/parameters/ | grep /enabled # or: cat /sys/module/zswap/parameters/enabled 
+#     # echo -e "- check zswap state (if '...enabled: N' -> zswap is disabled):" # needs reboot first
+#     # grep -r . /sys/module/zswap/parameters/ | grep /enabled # or: cat /sys/module/zswap/parameters/enabled 
 
-    echo -e "\nInstalling 'zram-generator'..."
-    sudo pacman -S --needed --noconfirm zram-generator
-    echo -e "Creating zram-generator config..."
-    zramGeneratorConfPath="/etc/systemd/zram-generator.conf"
-    sudo touch "${zramGeneratorConfPath}"
-    echo -e "[zram0]\nzram-size = ram / ${zramSize}\ncompression-algorithm = zstd" | sudo tee "${zramGeneratorConfPath}" >/dev/null
-    echo -e "Reloading daemon and starting systemd-zram-setup service for zram..."
-    sudo systemctl daemon-reload
-    sudo systemctl start systemd-zram-setup@zram0.service # zram'0': -> assuming its the only / first zram
-    echo -e "Check:"
-    # sudo zramctl --output-all # Check # swapon -s # or: zramctl --output-all # or: cat /proc/swaps # or: systemctl status systemd-zram-setup@zram0.service
-    sudo zramctl --output-all && echo "" && swapon --output-all
-    echo -e "\nConfig to optimize swap on zram..."
-    zramParameterPath="/etc/sysctl.d/99-vm-zram-parameters.conf"
-    sudo touch "${zramParameterPath}"
-    echo -e "vm.swappiness = 180\nvm.watermark_boost_factor = 0" | sudo tee "${zramParameterPath}" >/dev/null
-    echo -e "vm.watermark_scale_factor = 125\nvm.page-cluster = 0" | sudo tee --append "${zramParameterPath}" >/dev/null
-else
-    echo -e "\e[1;33m- 'zram' not set to 'true' in config file, skipping \e[39m"
-fi
+#     echo -e "\nInstalling 'zram-generator'..."
+#     sudo pacman -S --needed --noconfirm zram-generator
+#     echo -e "Creating zram-generator config..."
+#     zramGeneratorConfFilePath="/etc/systemd/zram-generator.conf"
+#     sudo touch "${zramGeneratorConfFilePath}"
+#     echo -e "[zram0]\nzram-size = ram / ${zramSize}\ncompression-algorithm = zstd" | sudo tee "${zramGeneratorConfFilePath}" >/dev/null
+#     echo -e "Reloading daemon and starting systemd-zram-setup service for zram..."
+#     sudo systemctl daemon-reload
+#     sudo systemctl start systemd-zram-setup@zram0.service # zram'0': -> assuming its the only / first zram
+#     echo -e "Check:"
+#     # sudo zramctl --output-all # Check # swapon -s # or: zramctl --output-all # or: cat /proc/swaps # or: systemctl status systemd-zram-setup@zram0.service
+#     sudo zramctl --output-all && echo "" && swapon --output-all
+#     echo -e "\nConfig to optimize swap on zram..."
+#     zramParameterConfFilePath="/etc/sysctl.d/99-vm-zram-parameters.conf"
+#     sudo touch "${zramParameterConfFilePath}"
+#     echo -e "vm.swappiness = 180\nvm.watermark_boost_factor = 0" | sudo tee "${zramParameterConfFilePath}" >/dev/null
+#     echo -e "vm.watermark_scale_factor = 125\nvm.page-cluster = 0" | sudo tee --append "${zramParameterConfFilePath}" >/dev/null
+# else
+#     echo -e "\e[1;33m- 'zram' not set to 'true' in config file, skipping \e[39m"
+# fi
+# ### END zram --------------------------------------------------------------------------------
+
 
 # --- Info message:
-echo -e "\n\e[1;33mSome changes may only take effect after a restart. \e[39m" # e.g. for: 'zwap'
+# echo -e "\n\e[1;33mSome changes may only take effect after a restart. \e[39m" # e.g. for: 'zwap'

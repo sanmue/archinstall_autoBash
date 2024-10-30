@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2154
 
-# set -x   # enable debug mode
+set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash_chroot.sh
@@ -47,12 +48,35 @@ set-password root   # set initial password
 echo -e "\n\e[0;35m## Grafics\e[39m"
 install-grafics
 
+echo -e "\n\e[0;35m## zram installation + conf \e[39m"
+# https://wiki.archlinux.org/title/Zram#Using_zram-generator
+if [ "${zram}" = "true" ]; then
+    echo -e "\nInstalling 'zram-generator'..."
+    pacman -S --needed --noconfirm zram-generator
+    echo -e "Creating zram-generator config..."
+    touch "${zramGeneratorConfFilePath}" # zram path variabel set in config file
+    echo -e "[zram0]\nzram-size = ram / ${zramSize}\ncompression-algorithm = zstd" | tee "${zramGeneratorConfFilePath}" >/dev/null
+    # echo -e "Reloading daemon and starting systemd-zram-setup service for zram..."
+    # systemctl daemon-reload # Running in chroot, ignoring command 'daemon-reload'
+    # systemctl start systemd-zram-setup@zram0.service # Running in chroot, ignoring command 'start' # zram'0': -> assuming its the only / first zram
+    # echo -e "Check:"
+    # sudo zramctl --output-all # Check # swapon -s # or: zramctl --output-all # or: cat /proc/swaps # or: systemctl status systemd-zram-setup@zram0.service
+    # zramctl --output-all && echo "" && swapon --output-all # not in chroot
+    # cat /proc/swaps # since in chroot / zram0 service not started, prints nothing
+    echo -e "\nConfig to optimize swap on zram..."
+    touch "${zramParameterConfFilePath}" # zram parameter path variabel set in config file
+    echo -e "vm.swappiness = 180\nvm.watermark_boost_factor = 0" | tee "${zramParameterConfFilePath}" >/dev/null
+    echo -e "vm.watermark_scale_factor = 125\nvm.page-cluster = 0" | tee --append "${zramParameterConfFilePath}" >/dev/null
+else
+    echo "- Skipping, zram: '${zram}'"
+fi
+
 # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Configuring_mkinitcpio
 # https://wiki.archlinux.org/title/Installation_guide#Initramfs
 # https://wiki.archlinux.org/title/Mkinitcpio#Manual_generation
 
 echo -e "\n\e[0;35m## Boot loader installation \e[39m"
-install-bootloader # including config if encryption = true
+install-bootloader # including config for encryption, keyfile, zram (disable zswap)
 
 echo -e "\n\e[0;35m## Create and store keyfile \e[39m"
 if [ "${encryption}" = "true" ] && [ "${keyfile}" = "true" ]; then
