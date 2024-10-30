@@ -32,7 +32,8 @@ Here are some points of the current default configuration:
   - or BIOS / MBR: set MBR manually in config
 - GRUB Bootloader
 - Enryption + keyfile to automatically decrypt root partition on boot
-- (no swap file or swap partition, see 'zram' further below (Post-install))
+- ['zram'](https://wiki.archlinux.org/title/Zram) used as swap (size: 50% of RAM size)
+- no swap file or swap partition
 - Grafics Cards / Drivers (detected automatically, no 32bit support), needs more testing
   - AMD: should work
   - Intel: needs manual config, not testet, see Arch Wiki
@@ -40,7 +41,7 @@ Here are some points of the current default configuration:
 - Gnome Desktop Environment
   - with additional packages: Firefox and VLC Media Player
 - Post-install (after reboot):
-  - snapper-rollback, ['zram'](https://wiki.archlinux.org/title/Zram) used as swap
+  - snapper-rollback
 
 ### Start installation of Arch Linux as configured
 
@@ -67,7 +68,7 @@ Here are some points of the current default configuration:
 - installing a Desktop Environment (optional via config)
 - encryption + keyfile (each optional via config)
 - swap: partition, file or none (set via config)
-- zram (set via config)
+- zram (set via config), usage as swap
 
 ## Limitations
 
