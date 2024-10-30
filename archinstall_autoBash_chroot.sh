@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
-set -x   # enable debug mode
+# set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash_chroot.sh
@@ -82,7 +82,11 @@ echo -e "\n\e[0;35m## Create and store keyfile \e[39m"
 if [ "${encryption}" = "true" ] && [ "${keyfile}" = "true" ]; then
     dd bs=512 count=4 if=/dev/random iflag=fullblock | install -m 0600 /dev/stdin "${keyfilePath}"
     echo -e "- Configuring LUKS to make use of the keyfile. Enter encryption passphrase for root partition:"
-    cryptsetup luksAddKey "${rootPartition}" "${keyfilePath}" # e.g.: cryptsetup luksAddKey /dev/vda2 /etc/cryptsetup-keys.d/crypto_keyfile.key
+    result=6666 # arbitrary number not equal to 0 (0 = no error in last command))
+    while [ "$result" -ne 0 ]; do
+        cryptsetup luksAddKey "${rootPartition}" "${keyfilePath}" # e.g.: cryptsetup luksAddKey /dev/vda2 /etc/cryptsetup-keys.d/crypto_keyfile.key
+        result=$?
+    done
 else
     echo "- Skipping, keyfile: '${keyfile}', encryption: '${encryption}'"
 fi

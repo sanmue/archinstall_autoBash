@@ -202,5 +202,7 @@ fi
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
 echo "- unmounting /mnt"
 umount -R /mnt
+echo -e "\n\e[1;31m! Initial password for root and other users set in config file: '${initialPassword}'\e[39m"
+echo -e "\e[1;31m! Please change after reboot.\e[39m"
 echo -e "\n!!! Finished, rebooting in 5 seconds !!!"
 sleep 5 && reboot

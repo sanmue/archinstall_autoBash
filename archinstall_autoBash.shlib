@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
-set -x   # enable debug mode
+# set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.shlib
@@ -264,14 +264,24 @@ format-partition() {
         # https://wiki.archlinux.org/title/Dm-crypt/Device_encryption#Encrypting_devices_with_cryptsetup
         # GRUB's support for LUKS2 is limited; see GRUB#Encrypted /boot for details.
         echo -e "\nEnrypting root partition..."
-        cryptsetup luksFormat --pbkdf pbkdf2 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Lable (-L) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
-        # echo "${encryptionPassword}" | cryptsetup luksFormat --pbkdf pbkdf2 -y -v --type luks2 --label "${encryptionRootName}" "${1}${rootPartitionNo}" --key-file -    # encrypt root partition # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Preparing_non-boot_partitions
+        result=6666  # arbitrary number not equal to 0 (0 = no error in last command)
+        while [ "$result" -ne 0 ]; do
+            if [ "$result" -ne 6666 ]; then echo -e "\e[1;33mPlease try again, something did not work.\e[39m"; fi
+            cryptsetup luksFormat --pbkdf pbkdf2 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Lable (-L) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
+            # echo "${encryptionPassword}" | cryptsetup luksFormat --pbkdf pbkdf2 -y -v --type luks2 --label "${encryptionRootName}" "${1}${rootPartitionNo}" --key-file -    # encrypt root partition # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Preparing_non-boot_partitions
+            result=$?
+        done
 
         echo -e "\nOpening encrypted root partition..."
-        cryptsetup open "${1}${rootPartitionNo}" "${encryptionRootName}" # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-open.8.en
-        # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-open.8.en
-        # echo "${encryptionPassword}" | cryptsetup open -v --type luks2 "${1}${rootPartitionNo}" "${encryptionRootName}" --key-file -   # '-' : read from stdin -> echo
-        # cryptsetup open -v --type luks2 "${1}${rootPartitionNo}" "${encryptionRootName}"
+        result=6666 # arbitrary number not equal to 0 (0 = no error in last command))
+        while [ "$result" -ne 0 ]; do
+            cryptsetup open "${1}${rootPartitionNo}" "${encryptionRootName}" # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-open.8.en
+            # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-open.8.en
+            # echo "${encryptionPassword}" | cryptsetup open -v --type luks2 "${1}${rootPartitionNo}" "${encryptionRootName}" --key-file -   # '-' : read from stdin -> echo
+            # cryptsetup open -v --type luks2 "${1}${rootPartitionNo}" "${encryptionRootName}"
+            result=$?
+        done
+
         if [ "${4}" = "btrfs" ]; then
             #mkfs."${4}" -f -L "${7}" -n 32k "${encryptionRootPath}"        # format root-partition, btrfs, force (-f), label (-L), blocksize (-n) # TODO: config variable for blocksize
             mkfs."${4}" -f -L "${7}" "${encryptionRootPath}"
