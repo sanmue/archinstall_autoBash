@@ -836,13 +836,13 @@ config-sudoUser() {
 }
 
 install-grafics() {
-    if [ "${graficsCardInstalled}" = "true" ]; then
+if [ "${graficsCardInstalled}" = "true" ] && [ "${installDesktopEnvironment}" = "true" ]; then
         echo "- installing configured grafics packages"
         # pacman -S --noconfirm --needed ${strListGraficsCardPackage}    # install packages for the grafics card
         if [[ ! ${strListGraficsCardPackage} = "" ]]; then pacman -S --noconfirm --needed ${strListGraficsCardPackage}; fi
         check-exitStatusLastCommand $?
     else
-        echo "- NOT installing grafics card packages, because parameter ist set to 'false'"
+        echo "- NOT installing grafics card packages, 'graficsCardInstalled': '${graficsCardInstalled}', 'installDesktopEnvironment': '${installDesktopEnvironment}' (both must be 'true')"
     fi
 }
 
