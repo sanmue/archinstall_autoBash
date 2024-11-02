@@ -24,35 +24,35 @@ Bash script to automate Arch Linux installation
   - `vim archinstall_autoBash.config` # use your preferred editor instead of 'vim'
   - these variables are used by the script to execute the installation
 
-Here are some points of the current default configuration:
-
-- Btrfs filesystem with subvolumes (flat layout, configurable), snapper snapshots
-  - and [snapper-rollback (AUR)](https://aur.archlinux.org/packages/snapper-rollback) (needs running a separate script after reboot as user with sudo privileges)
-- UEFI / GPT or BIOS / GPT (detected automatically)
-  - or BIOS / MBR: set MBR manually in config
-- GRUB Bootloader
-- Enryption + keyfile to automatically decrypt root partition on boot
-- ['zram'](https://wiki.archlinux.org/title/Zram) used as swap (size: 50% of RAM size)
-- no swap file or swap partition
-- Grafics Cards / Drivers (detected automatically, no 32bit support), needs more testing
-  - AMD: should work
-  - Intel: needs manual config, not testet, see Arch Wiki
-  - NVIDIA: needs manual config, not testet, see Arch Wiki
-- Gnome Desktop Environment
-  - with additional packages: Firefox and VLC Media Player
-- Post-install (after reboot):
-  - snapper-rollback
-
 ### Start installation of Arch Linux as configured
 
 - start the initial script in the cloned git repo folder
   - `./archinstall_autoBash.sh`
-  - remember to make the script files executable first, or simply all files in the folder: `chmod +x *`
+    - remember to make the script files executable first, or simply all files in the folder: `chmod +x *`
 - after reboot:
   - clone the repo again and `cd` into it (for instructions: see further above)
 - execute the script: `./archinstall_autoBash_afterReboot.sh` (as a user with sudo privileges)
   - installs 'snapper-rollback', zram
   - if set in config file
+
+### Some points of the current default configuration:
+
+- Btrfs filesystem with subvolumes (flat layout, configurable), snapper snapshots
+  - and [snapper-rollback (AUR)](https://aur.archlinux.org/packages/snapper-rollback) (needs running a separate script after reboot as user with sudo privileges)
+- UEFI or BIOS (detected automatically) with GPT
+  - for BIOS / MBR: set MBR manually in config
+- GRUB Bootloader
+- Enryption + keyfile to automatically decrypt root partition on boot
+- ['zram'](https://wiki.archlinux.org/title/Zram) used as swap (size: 50% of RAM size)
+- no swap file or swap partition
+- Grafics Cards / Drivers (detected automatically, no 32bit support), needs testing
+  - AMD: should work
+  - Intel: needs manual config, not testet, see Arch Wiki for current info
+  - NVIDIA: needs manual config, not testet, see Arch Wiki for current info
+- Gnome Desktop Environment
+  - with additional packages: Firefox and VLC Media Player (change via config)
+- Post-install (after reboot):
+  - snapper-rollback
 
 ## Features
 
