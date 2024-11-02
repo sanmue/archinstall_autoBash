@@ -5,7 +5,7 @@
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash_chroot.sh
-# Description          simple rudimentary bash script to automate my arch linux installation 
+# Description          simple rudimentary bash script to automate my arch linux installation
 #                      * 2nd part: arch-chroot on new root (mounted at /mnt)
 # Author               Sandro Müller (sandro(ÄT)universalaccount.de)
 # Licence              GPLv3
@@ -122,9 +122,16 @@ config-sudoUser
 echo -e "\n\e[0;35m## Install graphical user interface \e[39m"
 install-DesktopEnvironment
 
+echo -e "\n\e[0;35m## Install multimedia codecs \e[39m"
+if [ "${installMultimediaCodecs}" = "true" ]; then
+    pacman -S --noconfirm --needed $strListMultimediaCodecs
+else
+    echo "- Skipping since in config 'installMultimediaCodecs' not set to 'true'"
+fi # do not double quote ${installMultimediaCodecs}
+
 echo -e "\n\e[0;35m## Install additional fonts \e[39m"
-if [ "${installFont}" = "true" ]; then 
-    pacman -S --noconfirm --needed ${strListFontPkg};
+if [ "${installFont}" = "true" ]; then
+    pacman -S --noconfirm --needed ${strListFontPkg}
 else
     echo "- Skipping since in config 'installFont' not set to 'true'"
 fi # do not double quote ${strListFontPkg} # TODO: could change to array

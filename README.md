@@ -56,29 +56,26 @@ Here are some points of the current default configuration:
 
 ## Features
 
-- includes partitioning + formating of the disk (optional via config)
-  - if you set btrfs filesystem: creates + mounts subvolumes based on the specified subvolume layout in the config
-- creates snapper snapshots for root subvolume (optional via config)
-  - if btrfs filesystem is specified in the config and snapper set to 'true'
-- snapper-rollback (AUR) for simple rollback to a previous snapshot (if set to 'true' in the config + btrfs and snapper)
-- installing packages for virtualization (optional via config)
-- installing grafics packages (optional via config)
+- Partitioning + formating of the disk (optional via config)
+  - if you set to btrfs filesystem: creates + mounts subvolumes based on the specified subvolume layout (set via config)
+- Snapper snapshots for root subvolume (optional via config)
+  - if btrfs filesystem is specified and snapper set to 'true' in the config
+- Snapper-rollback (AUR) for simple rollback to a previous snapshot
+  - if set to 'true' in the config, only in combination with btrfs and snapper
+- Grafics card package installation (optional via config)
+  - consult the arch wiki for current info, change if necessary to the correct packages for your system, especially for NVIDIA and Intel.
   - for AMD it should work (works on my machine `;-)`)
-  - but you will still need to consult the wiki to install the correct packages for your system, especially for NVIDIA and Intel.
-- installing a Desktop Environment (optional via config)
-- encryption + keyfile (each optional via config)
-- swap: partition, file or none (set via config)
-- zram (set via config), usage as swap
+- Desktop Environment (optional via config, current default/only: Gnome)
+- Encryption and keyfile (each optional via config)
+- Swap: partition, file or none (set via config, current default: none)
+- Zram: usage as swap (set via config, current default)
+- Virtualization support (QEMU/KVM, optional via config)
 
 ## Limitations
-
-- supports only the [Example Partition Layouts (Uefi+GPT, Bios+GPT, Bios+MBR)](https://wiki.archlinux.org/title/Partitioning#Example_layouts):
-  - no seperate 'home'-partition
-  - creates a swap partition (fixed setting)
-    - no swapfile slelectable as alternative to a swap partition
-- no LVM or RAID
+- no seperate 'home' partition
 - only Grub bootloader
-- no nested virtualization configured
-- only 'Gnome' Desktop Environment selectable (optional via config)
+- only Gnome Desktop Environment or no DE (optional via config)
 - no multi-boot
+- no LVM or RAID
+- if opted for virtualization: no nested virtualization configured
 - ...
