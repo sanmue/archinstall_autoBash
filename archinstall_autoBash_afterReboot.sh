@@ -40,6 +40,7 @@ echo -e "\e[0;31mExecute this script as a user with sudo privileges (not as 'roo
 echo -e "\n\e[0;35m## Install and config snapper-rollback (AUR) \e[39m"
 if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ] && [ "${snapperRollback}" = "true" ]; then
     config-snapperRollback "${snapperRollbackFolder}" "${snapperSnapshotsSubvolName}" "${snapperRollbackConfig}" # e.g.: '/.btrfsroot' and '@snapshots' and '/etc/snapper-rollback.conf'
+    if [ "${bootloader}" = "systemd-boot" ]; then config-shellConfUser-rollbackFunction; fi
 else
     echo "Will not configure snapper-rollback due to configuration set in config-file."
     echo "Filesystem type ist not 'btrfs' and/or snapshots is set to 'false' and/or snapperRollback ist set to 'false'"

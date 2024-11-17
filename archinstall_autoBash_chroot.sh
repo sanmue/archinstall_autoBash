@@ -79,7 +79,7 @@ echo -e "\n\e[0;35m## Boot loader installation \e[39m"
 install-bootloader # including config for encryption, keyfile, zram (disable zswap)
 
 echo -e "\n\e[0;35m## Create and store keyfile \e[39m"
-if [ "${encryption}" = "true" ] && [ "${keyfile}" = "true" ]; then
+if [ "${encryption}" = "true" ] && [ "${keyfile}" = "true" ] && [ "${bootloader}" = "grub" ]; then
     dd bs=512 count=4 if=/dev/random iflag=fullblock | install -m 0600 /dev/stdin "${keyfilePath}"
     echo -e "- Configuring LUKS to make use of the keyfile. Enter encryption passphrase for root partition:"
     result=6666 # arbitrary number not equal to 0 (0 = no error in last command))
@@ -88,7 +88,7 @@ if [ "${encryption}" = "true" ] && [ "${keyfile}" = "true" ]; then
         result=$?
     done
 else
-    echo "- Skipping, keyfile: '${keyfile}', encryption: '${encryption}'"
+    echo -e "- Skipping: bootloader not GRUB or no encryption/keyfile\n  bootloader: '${bootloader}', keyfile: '${keyfile}', encryption: '${encryption}'"
 fi
 
 echo -e "\n\e[0;35m## Initramfs \e[39m"
@@ -96,10 +96,19 @@ echo -e "\n\e[0;35m## Initramfs \e[39m"
 echo -e "\n\e[0;35m- Configuring mkinitcpio \e[39m"
 # modify mkinitcpio.conf:
 config-mkinitcpio
-# regenerate initramfs:
-# mkinitcpio -p "${kernelPackage}"  # e.g. mkinitcpio -p linux
-mkinitcpio -P                       # (re-)generate all existing presets
+# (re)generate initramfs:
+# mkinitcpio -p "${kernelPackage}"  # e.g. mkinitcpio -p linux -> just for preset 'linux'
+mkinitcpio -P                       # -P: (re-)generate all existing presets
 
+if [ "${bootloader}" = "systemd-boot" ]; then
+    echo -e "\nCopy kernel and initramfs to the efi partition via rsync..." # our custom systemd 'efistub-update.path' not yet enabled at this point
+    pacman -S --needed --noconfirm rsync # make sure rsync is available
+    rsync -aPhEv --delete --exclude *ucode.img  /boot/* "${efiPartition_kernelInitramfsPath}"
+    echo "- Content of /boot:"
+    ls -lah "/boot"
+    echo "- Content of ${efiPartition_kernelInitramfsPath}:"
+    ls -lah "${efiPartition_kernelInitramfsPath}"
+fi
 
 # ### TEST --------------------------------------------------------------------
 # echo -e "\nPress Enter to continue - chroot: after configuring + executing mkinitcpio "

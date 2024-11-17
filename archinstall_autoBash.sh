@@ -134,7 +134,7 @@ genfstab -U /mnt >> /mnt/etc/fstab
 # ### TEST --------------------------------------------------------------------
 
 # create-fstab # creating individual fstab
-echo "- modify fstab (if btrfs: deleting mount option 'subvolid' (leaving just 'subvol') for all btrfs subvolumes)..."
+echo "- modify fstab (if btrfs: deleting mount option 'subvolid' if set (leaving just 'subvol') for all btrfs subvolumes)..."
 modify-fstab "/mnt/etc/fstab" # e.g. btrfs: genfstab includes ...,subvolid=XXX,... in mount options, which we do not want (with regard to snapshots)
 
 # Swap enryption - https://wiki.archlinux.org/title/Dm-crypt/Swap_encryption#UUID_and_LABEL
@@ -158,12 +158,13 @@ fi
 # ### TEST --------------------------------------------------------------------
 
 
-echo "- copy necessary script/files to root-user directory on new root (/mnt/root)"
+# make rquired script files available in chroot environment
+echo "- copy rquired script/files to root-user directory on new root (/mnt/root)"
 rsync -aPhEv archinstall_autoBash_chroot.sh /mnt/root/
 rsync -aPhEv archinstall_autoBash.config /mnt/root/
 rsync -aPhEv archinstall_autoBash.shlib /mnt/root/
-rsync -aPhEv "${fileDeviceName}" /mnt/root/          # e.g. vda
-rsync -aPhEv "${fileRootPartition}" /mnt/root/       # e.g. /dev/vda2
+rsync -aPhEv "${fileDeviceName}" /mnt/root/          # txt file containing device name, e.g. vda
+rsync -aPhEv "${fileRootPartition}" /mnt/root/       # txt file containing root partition, e.g. /dev/vda2
 # make them executable:
 chmod +x /mnt/root/archinstall_autoBash_chroot.sh
 chmod +x /mnt/root/archinstall_autoBash.config
@@ -202,7 +203,10 @@ fi
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
 echo "- unmounting /mnt"
 umount -R /mnt
-echo -e "\n\e[1;31m! Initial password for root and other users set in config file: '${initialPassword}'\e[39m"
-echo -e "\e[1;31m! Please change after reboot.\e[39m"
-echo -e "\n!!! Finished, rebooting in 5 seconds !!!"
+echo -e "\n\e[1;31m\! Initial password: '${initialPassword}'\e[39m"
+echo "  for 'root' and created users"
+echo -e "\e[1;31m\! Please change after reboot\e[39m"
+echo -e "\nRemember script 'archinstall_autoBash_afterReboot.sh'"
+echo -e "\nFinished, rebooting in 5 seconds..."
+
 sleep 5 && reboot

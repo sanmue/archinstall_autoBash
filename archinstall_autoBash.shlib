@@ -181,7 +181,7 @@ partition-diskUefi() {
         ) | sudo fdisk "${1}" 1>/dev/null
     fi
 
-    # sleep 2 # TEST-workaround since sometimes creating root partition failed because of 'device busy' (VM on USB-device) # TODO
+    # sleep 2 # TEST-workaround since sometimes creating root partition failed because of 'device busy' (VM on external USB (SSD) device) # TODO
 
     (
     echo n   # --- add a new partition: root ---
@@ -248,6 +248,7 @@ format-partition() {
     # ### ---
     # Save device root partition to file (e.g.: /dev/vda2)
     # - will be read from in chroot, needed for keyfile: cryptsetup luksAddKey /dev/vda2 ...
+    # only relevant when using GRUB bootloader; systemd-boot: /efi partition not encrypted -> only 1x password input to decrypt root
     # ### ---
     echo "${1}${rootPartitionNo}" | tee "${fileRootPartition}" >/dev/null
 
@@ -504,14 +505,14 @@ mount-partition() { # mounting all partitions (if btrfs: including subvolumes) a
     fi
 
     # --- EFI
-    # if ERROR Failed to get canonical path of /efi when installing grub:
+    # if ERROR Failed to get canonical path of /efi when installing boot loader (e.g. GRUB):
     # - https://bbs.archlinux.org/viewtopic.php?id=267084
     # - Mounting /mnt AFTER /mnt/efi hides /mnt/efi beneath the new /mnt -> EFI partition needs to be mounted AFTER mounting root at /mnt
     if [ "${2}" = "Uefi" ]; then               # bootMode: Uefi
         echo "- creating mount target for efi-partition..."
         mkdir -p "${7}${pathEfi}"              # e.g. /mnt/efi or /mnt/boot/efi
         echo "- mounting efi-partition..."
-        mount "${1}${4}" "${7}${pathEfi}"      # EFI-partition # e.g. mount /dev/vda1 /mnt/efi
+        mount "${1}${4}" -o "${mountOptionEfi}" "${7}${pathEfi}" # EFI-partition # e.g. mount /dev/vda1 -o fmask=0137,dmask=0027 /mnt/efi
     fi
 }
 
@@ -688,7 +689,7 @@ config-snapperLiveEnv() { # when booted in live environment
     local pathToSubvolume_real="${3}"
 
     # install needed packages in live environment:
-    pacman -Sy --needed --noconfirm snapper inotify-tools               # this is just for/in Live Environment # 'strListAdditionalPkg' already contains/installed the needed packages (snapper inotify-tools snap-pac grub-btrfs)
+    pacman -Sy && pacman -S --needed --noconfirm snapper inotify-tools  # this is just for/in Live Environment # 'strListAdditionalPkg' already contains/installed the needed packages (snapper inotify-tools snap-pac grub-btrfs)
 
     # unmount subvolume for snapshots (-> 'btrfsSubvolLayout')
     umount "${pathToSubvolume_tmp}${snapperSnapshotFolder}"             # e.g. /mnt/.snapshots # https://wiki.archlinux.org/title/Snapper#Configuration_of_snapper_and_mount_point
@@ -756,6 +757,37 @@ config-snapperRollback() { # called in a separate script after reboot
     sudo sed -i "s|/btrfsroot|${srf}|g" "${srcf}" # changing '/btrfsroot' to configured snapperRollbackFolder
 }
 
+# function 'config-shellConfUser-rollbackFunction()'
+# only relevant if bootloader is systemd-boot und snapper-rollback (AUR) ist installed
+# since this function also copies kernel and initramfs to efi partition
+# For GRUB use standard 'sudo snapper-rollback <snapshotID>'
+config-shellConfUser-rollbackFunction() {
+    if [ "${defaultShellUser}" = "bash" ]; then
+        shellConfFileName=".bashrc"    
+    elif [ "${defaultShellUser}" = "zsh" ]; then
+        shellConfFileName=".zshrc"
+    else
+        echo "Sorry, conf file for your shell unknown. You have to add (and adjust) the rollback function manually."
+        echo "File containing the function is here: '${filesDirName}/${rollbackFunctionFileName}'"
+        return 1
+    fi
+
+    shellConfFile="${HOME}/${shellConfFileName}"
+    rollbackFunctionFile="${filesDirName}/${rollbackFunctionFileName}"
+    if [[ ! -e "${rollbackFunctionFile}" ]]; then # http://mywiki.wooledge.org/BashFAQ/028
+        echo >&2 "Please cd into the repo before running this script."
+        return 1
+    else
+        echo "Adding rollback function to '${shellConfFile}'."
+        if [[ ! -e  "${shellConfFile}" ]]; then touch "${shellConfFile}"; fi
+        if [[ -z $(grep "rollback() {" "${shellConfFile}") ]]; then
+            cat "${rollbackFunctionFile}" >> "${shellConfFile}"
+        else
+            echo "Rollback function already in '${shellConfFile}', nothing to do."
+        fi
+    fi
+}
+
 modify-locales() {
     # Parameter 1: string with the items, seperated by space # Problem: items itsels partially have spaces inside itself (e.g. "en_US.UTF-8 UTF-8") -> no good dilimeter available
     # Parameter 2: path to the file in which the substitution will take place (should be "/etc/locale.gen")
@@ -807,18 +839,18 @@ set-password() {
     # Parameter 1: userId
 
     echo "- changing password for '${1}' to configured initialPassword"
-    # echo "${1}":password | chpasswd                           # set passwort for userId; script stops and waits for user input
-    printf "${1}:%s" "${initialPassword}" | chpasswd          # set passwort for userId, using ${initialPassword} from config   # or: sudo chpasswd <<<"${1}:${initialPassword}"
+    # echo "${1}":password | chpasswd # set passwort for userId; script stops and waits for user input
+    printf "${1}:%s" "${initialPassword}" | chpasswd # set passwort for userId, using ${initialPassword} from config   # or: sudo chpasswd <<<"${1}:${initialPassword}"
 
     if [ "${forceChangePassword}" = "true" ]; then passwd --expire "${1}"; echo "- forcing '${1}' to change password at next login"; fi     # forces the user to change password at next login
-    # chage -l "${1}"                                         # list password expiration and aging information for userId
+    # chage -l "${1}" # list password expiration and aging information for userId
 }
 
 create-userAccount() {
     echo "- creating account, setting configured initial password; if configured: forcing password change + adding user to group 'libvirt'"
     for userId in "${arrUserId[@]}"; do
         # useradd -m -U -s /bin/bash -p "${initialPassword}" "${userId}" # not the safe way, but password is in the config anyway... # create new user including: set initial passwort using ${initialPassword} from config
-        useradd -m -U -s /bin/bash "${userId}"                          # create new user
+        useradd -m -U -s "/bin/${defaultShellUser}" "${userId}" # create new user
 
         set-password "${userId}"
 
@@ -848,16 +880,17 @@ if [ "${graficsCardInstalled}" = "true" ] && [ "${installDesktopEnvironment}" = 
 
 install-bootloader() {
     if [ "${bootloader}" = "grub" ]; then
-        echo "- installing grub"
-        pacman -S --needed --noconfirm grub # install grub
+        echo "- installing ${bootloader}"
+        pacman -S --needed --noconfirm "${bootloader}" # install grub
         # if [ "${filesystemType}" = "btrfs" ]; then pacman -S --noconfirm grub; else pacman -S --noconfirm grub; fi   # grub-btrfs
-        config-bootloader
+        echo -e "\n\e[0;35m- Configuring the boot loader \e[39m"
+        config-bootloader-grub
 
 
-# ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - chroot: fct 'install-bootloader', after 'config-bootloader'"
-# read -r
-# ### TEST --------------------------------------------------------------------
+        # ### TEST --------------------------------------------------------------------
+        # echo -e "\nPress Enter to continue - chroot: fct 'install-bootloader', after 'config-bootloader'"
+        # read -r
+        # ### TEST --------------------------------------------------------------------
 
 
         if [ "${bootMode}" = "Bios" ]; then             # Bios
@@ -873,55 +906,79 @@ install-bootloader() {
         grub-mkconfig -o "${pathGrubCfg}"               # grub: create config
 
 
-# ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - chroot: end of fct 'install-bootloader'"
-# read -r
-# ### TEST --------------------------------------------------------------------
+        # ### TEST --------------------------------------------------------------------
+        # echo -e "\nPress Enter to continue - chroot: end of fct 'install-bootloader'"
+        # read -r
+        # ### TEST --------------------------------------------------------------------
 
+    elif [ "${bootloader}" = "systemd-boot" ]; then
+        echo -e "\e[0;35m- ${bootloader} - installing the UEFI boot manager \e[39m"
+        bootctl --entry-token=machine-id --make-entry-directory=yes install
 
+        config-bootloader-systemdboot
     fi
 }
 
-config-bootloader() {
+get-uuidRootPartition-chroot() {
+    uuidRootPartition=""
+    uuidRootPartition=$(lsblk -l -p -o Name,UUID | grep "${rootPartition}" | xargs | cut -d' ' -f2)
+    # -l, --list: output in form of a list # -p, --paths: Print full device paths. # -o, --output <list>: Specify which output columns to print.
+    # /dev/vda   
+    # /dev/vda1  ED26-00F7
+    # /dev/vda2  7dc856b2-6b3a-41d4-9740-806f91b168aa
+    #
+    # uuidRootPartition=$(blkid | grep "${rootPartition}" | cut -d '"' -f 2) # chroot: $rootPartition read from file $fileRootPartition; see config file
+    # Note: 'rootPartitionNo' not set in chroot, uses default value '0' from config (-> e.g. '/dev/vda0')
+    # uuidRootPartition=$(blkid | grep "LABEL=\"${encryptionRootName}\"" | cut -d '"' -f 2) # /dev/vda3: UUID="32b092af-c623-4e01-853c-87725214980f" LABEL="ROOT" TYPE="crypto_LUKS" PARTUUID="d0ba9d2d-ce65-4408-ad9e-2baf4aa11f5a"
+    # needs a label to be set in function 'format-partition'
+    # uuidRootPartition=$(blkid | grep "crypto_LUKS" | cut -d '"' -f 2)   # no label, only root partition encrypted # /dev/vda3: UUID="b68f1d17-ff77-452a-9651-ce32ca2baddf" TYPE="crypto_LUKS" PARTUUID="56eae391-fa31-4f21-92b5-9b7d69eef604"
+
+    # https://stackoverflow.com/questions/369758/how-to-trim-whitespace-from-a-bash-variable/3352015#3352015
+    # remove leading whitespace characters
+    uuidRootPartition="${uuidRootPartition#"${uuidRootPartition%%[![:space:]]*}"}"
+    # remove trailing whitespace characters
+    uuidRootPartition="${uuidRootPartition%"${uuidRootPartition##*[![:space:]]}"}"
+
+    if [ -z "${uuidRootPartition}" ]; then
+        blkid
+        # echo -e "\e[0;31mUUID of root partition (NOT the mapper device !) could not be defined, please enter manually.\e[39m"
+        read -r -p "Please enter UUID of root partition manually: " uuidRootPartition
+    fi
+
+    echo "${uuidRootPartition}"
+}
+
+config-bootloader-grub() {
     if [ "${encryption}" = "true" ]; then
-        echo -e "\n\e[0;35m- Configuring the boot loader (encryption settings) \e[39m"
+        echo -e "\n\e[0;35m- Configuring ${bootloader} boot loader (encryption settings) \e[39m"
         # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Configuring_the_boot_loader
         # In order to unlock the encrypted root partition at boot
 
-        if [ "${bootloader}" = "grub" ]; then
-            local uuidRootPartiton=""
-            # Note: 'rootPartitionNo' not set in chroot, uses default value '0' from config (-> e.g. '/dev/vda0')
-            uuidRootPartiton=$(blkid | grep "LABEL=\"${encryptionRootName}\"" | cut -d '"' -f 2)    # /dev/vda3: UUID="32b092af-c623-4e01-853c-87725214980f" LABEL="cryptroot" TYPE="crypto_LUKS" PARTUUID="d0ba9d2d-ce65-4408-ad9e-2baf4aa11f5a"
-                                                                                                    # needs a label to be set in function 'format-partition'
-            # uuidRootPartiton=$(blkid | grep "crypto_LUKS" | cut -d '"' -f 2)   # no label, only root partition encrypted # /dev/vda3: UUID="b68f1d17-ff77-452a-9651-ce32ca2baddf" TYPE="crypto_LUKS" PARTUUID="56eae391-fa31-4f21-92b5-9b7d69eef604"
+        uuidRootPartition=""
+        uuidRootPartition=$(get-uuidRootPartition-chroot)
+        #uuidRootPartition=$(blkid | grep "${rootPartition}" | cut -d '"' -f 2) # chroot: $rootPartition read from file $fileRootPartition; see config file
+        echo "uuidRootPartition: ${uuidRootPartition}"
 
-            echo "uuidRootPartiton: '${uuidRootPartiton}'"
-            if [ -z $(echo "${uuidRootPartiton}" | xargs) ]; then
-                echo "--- blkid:"
-                blkid
-                echo -e "\e[0;31mUUID of root partition (NOT the mapper device !) could not be defined, please enter manually.\e[39m"
-                read -r -p "Enter UUID: " uuidRootPartiton
-            fi
-
-            # GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"
-            if [ "${keyfile}" = "true" ]; then
-                sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartiton}:${encryptionRootName} root=${encryptionRootPath} cryptkey=rootfs:${keyfilePath}|g" /etc/default/grub
-            else
-                sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartiton}:${encryptionRootName} root=${encryptionRootPath}|g" /etc/default/grub
-            fi
-
-            # enable booting from LUKS encrypted devices:
-            sed -i 's|#GRUB_ENABLE_CRYPTODISK=y|GRUB_ENABLE_CRYPTODISK=y|g' /etc/default/grub
-
-            # sudo grub-mkconfig -o "$pathGrubCfg"   # not necessary anymore, will be done in function 'install-bootloader' after this function finishes
+        # GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"
+        if [ "${keyfile}" = "true" ]; then
+            sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartition}:${encryptionRootName} root=${encryptionRootPath} cryptkey=rootfs:${keyfilePath}|g" /etc/default/grub
+        else
+            sed -i "s|loglevel=3 quiet|loglevel=3 quiet cryptdevice=UUID=${uuidRootPartition}:${encryptionRootName} root=${encryptionRootPath}|g" /etc/default/grub
         fi
+
+        # enable booting from LUKS encrypted devices:
+        sed -i 's|#GRUB_ENABLE_CRYPTODISK=y|GRUB_ENABLE_CRYPTODISK=y|g' /etc/default/grub
+
+        # sudo grub-mkconfig -o "$pathGrubCfg"   # not necessary anymore, will be done in function 'install-bootloader' after this function finishes
+    else
+        echo "   - no enryption config needed, encrytion: '${encryption}'"
     fi
 
-    if [ "${zram}" = "true" ] && [ "${bootloader}" = "grub" ]; then
+    if [ "${zram}" = "true" ]; then
         # - https://wiki.archlinux.org/title/Zram#Using_zram-generator
-        echo -e "\n\e[0;35m- Configuring the boot loader (zram settings) \e[39m"
+        echo -e "\n\e[0;35m- Configuring ${bootloader} boot loader (zram settings) \e[39m"
         echo -e "'zwap' prevents 'zram' from being used effectively, will be disabled permanently via kernel parameter..." # 'zswap' is used by default in Arch Linux
-        zswapDisable_kernelOption='zswap.enabled=0'
+        # zswapDisable_kernelOption='zswap.enabled=0' # already set in 'archinstall_autoBash.config'
         if [[ -z $(grep "${zswapDisable_kernelOption}" "${grubConfDefaultPath}") ]]; then # wenn kernel option noch nicht in ${grubConfDefaultPath}
             string=$(grep "GRUB_CMDLINE_LINUX_DEFAULT=" "${grubConfDefaultPath}") # grubConfDefaultPath set in config file
             tmpString="${string%?}" # remove last character (")
@@ -933,7 +990,186 @@ config-bootloader() {
             echo -e "\e[1;33m- Kernel option to disable 'zswap' already in '${grubConfDefaultPath}' \e[39m"
             # head -n 8 -v "${grubConfDefaultPath}"
         fi
+    else
+        echo "   - no zram config needed, zram: '${zram}'"
     fi
+}
+
+config-bootloader-systemdboot() {
+    echo -e "\n\e[0;35m- Configuring ${bootloader} boot loader \e[39m"
+
+    machineid=$(cat /etc/machine-id)
+    efiPartition_kernelInitramfsPath="${pathEfi}/${machineid}/" # e.g.: /efi/af36e2965f254d26a73f1eb3e6049a8c/
+    systemdServiceUnitPath="/etc/systemd/system"
+    # efistubUpdatePathFilename="efistub-update.path" # already defined in 'archinstall_autoBash.config' (for adding to services array)
+    efistubUpdateServiceFilename="efistub-update.service"
+    efistubUpdatePath_file="${systemdServiceUnitPath}/${efistubUpdatePathFilename}"
+    efistubUpdateService_file="${systemdServiceUnitPath}/${efistubUpdateServiceFilename}"
+    efiLoaderPath="${pathEfi}/loader"
+    efiLoaderEntriesPath="${efiLoaderPath}/entries"
+    efiLoaderConf_fileName="loader.conf"
+    efiLoaderConf_file="${efiLoaderPath}/${efiLoaderConf_fileName}" # e.g.: /efi/loader/loader.conf
+
+    echo "rootPartition: ${rootPartition}" # e.g.: /dev/vda2
+    uuidRootPartition=""
+    uuidRootPartition=$(get-uuidRootPartition-chroot)
+    # uuidRootPartition=$(blkid | grep "${rootPartition}" | cut -d '"' -f 2) # chroot: $rootPartition read from file $fileRootPartition; see config file
+    echo -e "uuidRootPartition: ${uuidRootPartition}\n"
+
+    # ### TEST --------------------------------------------------------------------
+    blkid
+    # echo "uuidRootPartition: ${uuidRootPartition}"
+    # echo -e "\nPress Enter to continue - config-bootloader-systemdboot "
+    # read -r
+    # ### TEST --------------------------------------------------------------------
+
+
+    # ### #####################################################################################
+    # ### Create systemd unit files to copy kernel + intiramfs from /boot to /efi/<machinte-id>
+
+    # --- create systemd unit file 'efistub-update.path'
+    touch "${efistubUpdatePath_file}"
+    efistubPathContentParts=()
+    efistubPathContentParts=(
+        "[Unit]" 
+        "Description=Copy EFISTUB Kernel to EFI system partition" 
+        "" 
+        "[Path]" 
+    )
+    content=""
+    for contentPart in "${efistubPathContentParts[@]}"; do
+        content+="${contentPart}\n"
+    done
+    echo -e "${content}" > "${efistubUpdatePath_file}"
+
+    content=""
+    for kernel in "${arrKernel[@]}"; do # 'arrKernel' is defined in archinstall_autoBash.config; e.g.: ("linux" "linux-lts")
+        content+="PathChanged=/boot/initramfs-${kernel}-fallback.img\n" # e.g. initramfs-linux-fallback.img
+    done
+    echo -e "${content}" >> "${efistubUpdatePath_file}"
+
+    efistubPathContentParts=(
+        "Unit=${efistubUpdateServiceFilename}"
+        ""
+        "[Install]" 
+        "WantedBy=multi-user.target" 
+        "WantedBy=system-update.target" 
+    )
+    content=""
+    for contentPart in "${efistubPathContentParts[@]}"; do
+        content+="${contentPart}\n"
+    done
+    echo -e "${content}" >> "${efistubUpdatePath_file}"
+
+    # --- create systemd unit file 'efistub-update.service'
+    touch "${efistubUpdateService_file}"
+    efistubServiceContentParts=()
+    efistubServiceContentParts=(
+        "[Unit]" 
+        "Description=Copy EFISTUB Kernel to EFI system partition" 
+        "" 
+        "[Service]" 
+        "Type=oneshot"
+    )
+    content=""
+    for contentPart in "${efistubServiceContentParts[@]}"; do
+        content+="${contentPart}\n"
+    done
+    echo -e "${content}" > "${efistubUpdateService_file}"
+
+    content=""
+    for kernel in "${arrKernel[@]}"; do
+        content+="#${kernel}:\n"
+        content+="ExecStart=/usr/bin/cp -af /boot/vmlinuz-${kernel} ${efiPartition_kernelInitramfsPath}\n"
+        content+="ExecStart=/usr/bin/cp -af /boot/initramfs-${kernel}.img ${efiPartition_kernelInitramfsPath}\n"
+        content+="ExecStart=/usr/bin/cp -af /boot/initramfs-${kernel}-fallback.img ${efiPartition_kernelInitramfsPath}\n"
+    done
+    echo -e "${content}" >> "${efistubUpdateService_file}"
+
+    # Verify the syntax of the Systemd Unit files # TODO
+    # systemd-analyze verify /etc/systemd/system/efistub-update.*
+
+    # Initially we have to copy the kernel and initramfs manually to the efi partition:
+    echo -e "\nInitial copy of kernel and initramfs to the efi partition via rsync"
+    pacman -S --needed --noconfirm rsync # make sure rsync is available
+    rsync -aPhEv --delete --exclude *ucode.img  /boot/* "${efiPartition_kernelInitramfsPath}"
+    echo "- Content of /boot:"
+    ls -lah "/boot"
+    echo "- Content of ${efiPartition_kernelInitramfsPath}:"
+    ls -lah "${efiPartition_kernelInitramfsPath}"
+
+
+    # ### #########################
+    # --- Loader and loader entries
+
+    # --- Loader configuration
+    # default entry alrady present (done by bootctl ... install); e.g.: default af36e2965f254d26a73f1eb3e6049a8c-*
+    # - timeout:
+    timeout=$(grep "timeout" "${efiLoaderConf_file}")
+    timeoutNew="timeout 4" # set loader timeout to 4 seconds
+    sed -i "s/${timeout}/${timeoutNew}/g" "${efiLoaderConf_file}"
+    # - console-mode
+    consolemode=$(grep "console-mode" "${efiLoaderConf_file}")
+    consolemodeNew="console-mode max"
+    sed -i "s/${consolemode}/${consolemodeNew}/g" "${efiLoaderConf_file}"
+    # - editor
+    echo "editor no" >> "${efiLoaderConf_file}"
+
+    # --- Adding loaders
+    for kernel in "${arrKernel[@]}"; do # 'arrKernel' is defined in archinstall_autoBash.config; e.g.: ("linux" "linux-lts")
+        # - standard:
+        loaderEntryFile=""
+        content=""
+        # Zeilen, die sich bei 'fallback' gegenüber 'standard' ändern: title und initrd
+        titleLine="";  titleLine="title      Arch ${kernel}"
+        initrdLine=""; initrdLine="initrd     /${machineid}/initramfs-${kernel}.img"
+        titleLineFallback=""; titleLineFallback="title      Arch ${kernel} (fallback initramfs)"
+        initrdLineFallback=""; initrdLineFallback="initrd     /${machineid}/initramfs-${kernel}-fallback.img"
+
+        loaderEntryFile="${efiLoaderEntriesPath}/${machineid}-arch-${kernel}.conf"
+        touch "${loaderEntryFile}"
+
+        content+="${titleLine}\n"
+        content+="machine-id ${machineid}\n"
+        content+="linux      /${machineid}/vmlinuz-${kernel}\n"
+        content+="${initrdLine}\n"
+        if [ "${encryption}" = "true" ]; then
+            # content+="options    rootflags=subvol=/@ rd.luks.name=1C2A3274-4C0B-4146-A5B7-EC8C5235E1FA=${encryptionRootName}"
+            content+="options    rootflags=subvol=/@ rd.luks.name=${uuidRootPartition}=${encryptionRootName}"
+            content+=" root=${encryptionRootPath} rw systemd.machine-id=${machineid}"
+        else
+            # content+="options    rootflags=subvol=/@ root=UUID=1C2A3274-4C0B-4146-A5B7-EC8C5235E1FA rw systemd.machine-id=${machineid}"
+            content+="options    rootflags=subvol=/@ root=UUID=${uuidRootPartition} rw systemd.machine-id=${machineid}"
+        fi
+        content+=" nowatchdog" # https://wiki.archlinux.org/title/Improving_performance#Watchdogs # ok to set for non-critical home/desktop use case
+        # content+=" nvme_load=YES" # if (NVME) SSD
+        #
+        # ### ############################################
+        # --- zram - set kernel parameter to disable zswap
+        if [ "${zram}" = "true" ]; then content+=" ${zswapDisable_kernelOption}"; fi
+        # ### ############################################
+        content+="\n"
+        echo -e "${content}" > "${loaderEntryFile}"
+
+        # - fallback:
+        content=""
+        loaderEntryFileFallback="${efiLoaderEntriesPath}/${machineid}-arch-${kernel}-fallback.conf"
+        # copy standard loaderEntryFile to loaderEntryFileFallback:
+        cp -fv "${loaderEntryFile}" "${loaderEntryFileFallback}"
+        touch "${loaderEntryFileFallback}"
+        sed -i "s|${titleLine}|${titleLineFallback}|g" "${loaderEntryFileFallback}"
+        sed -i "s|${initrdLine}|${initrdLineFallback}|g" "${loaderEntryFileFallback}"
+
+        # - Check config:
+        echo "bootctl --no-pager:"
+        bootctl --no-pager # TODO: error handling # On success, 0 is returned, a non-zero failure code otherwise.
+    done
+
+
+    # ### TEST --------------------------------------------------------------------
+    # echo -e "\nPress Enter to continue - config-bootloader-systemdboot "
+    # read -r
+    # ### TEST --------------------------------------------------------------------
 }
 
 config-mkinitcpio() {
@@ -942,14 +1178,29 @@ config-mkinitcpio() {
         sed -i 's/MODULES=()/MODULES=(btrfs)/g' "${pathToMkinitcpioConf}"
     fi
 
-    # modify FILES:
-    if [ "${encryption}" = "true" ] && [ "${keyfile}" = "true" ]; then
+    # modify FILES (if encryption + keyfile + GRUB bootloader):
+    if [ "${encryption}" = "true" ] && [ "${keyfile}" = "true" ] && [ "${bootloader}" = "grub" ]; then
         sed -i "s|FILES=()|FILES=(${keyfilePath})|g" "${pathToMkinitcpioConf}"
     fi
 
     # modify HOOKS:
-    if [ "${encryption}" = "true" ]; then
-        sed -i -E 's/consolefont block filesystems/consolefont block encrypt filesystems/g' "${pathToMkinitcpioConf}"
+    # HOOKS=(base udev autodetect microcode modconf kms keyboard keymap consolefont block filesystems fsck) # default
+    hooksLine=""; hooksLine=$(grep -e '^HOOKS=' "${pathToMkinitcpioConf}")
+
+    if [ "${bootloader}" = "grub" ]; then
+        if [ "${encryption}" = "true" ]; then
+            hooksLineNew="${hooksLine/filesystems/encrypt filesystems}" # replace 'filesystems' with 'encrypt filesystems'
+            sed -i "s/^${hooksLine}/${hooksLineNew}/g" "${pathToMkinitcpioConf}" # replace old hooksLine with hooksLineNew in the file
+        fi
+    elif [ "${bootloader}" = "systemd-boot" ]; then
+        hooksLineNew="${hooksLine/udev/systemd}"
+        hooksLineNew="${hooksLineNew/keymap consolefont/sd-vconsole}"
+
+        if [ "${encryption}" = "true" ]; then
+            hooksLineNew="${hooksLineNew/filesystems/sd-encrypt filesystems}"
+        fi
+
+        sed -i "s/^${hooksLine}/${hooksLineNew}/g" "${pathToMkinitcpioConf}" # replace old hooksLine with hooksLineNew in the file
     fi
 }
 

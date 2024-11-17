@@ -41,11 +41,12 @@ Bash script to automate Arch Linux installation
   - and [snapper-rollback (AUR)](https://aur.archlinux.org/packages/snapper-rollback) (needs running a separate script after reboot as user with sudo privileges)
 - UEFI or BIOS (detected automatically) with GPT
   - for BIOS / MBR: set MBR manually in config
-- GRUB Bootloader
-- Enryption + keyfile to automatically decrypt root partition on boot
+- systemd-boot (UEFI boot mode) and GRUB Bootloader (Bios boot mode)
+- Encryption
+- keyfile to automatically decrypt root partition on boot (only relevant for GRUB)
 - ['zram'](https://wiki.archlinux.org/title/Zram) used as swap (size: 50% of RAM size)
-- no swap file or swap partition
-- Grafics Cards / Drivers (detected automatically, no 32bit support), needs testing
+- no swap file, no swap partition
+- Grafics cards drivers (detected automatically, no 32bit application support), needs testing
   - AMD: should work
   - Intel: needs manual config, not testet, see Arch Wiki for current info
   - NVIDIA: needs manual config, not testet, see Arch Wiki for current info
@@ -56,6 +57,7 @@ Bash script to automate Arch Linux installation
 
 ## Features
 
+- Bootloaders: GRUB and systemd-boot
 - Partitioning + formating of the disk (optional via config)
   - if you set to btrfs filesystem: creates + mounts subvolumes based on the specified subvolume layout (set via config)
 - Snapper snapshots for root subvolume (optional via config)
@@ -66,14 +68,13 @@ Bash script to automate Arch Linux installation
   - consult the arch wiki for current info, change if necessary to the correct packages for your system, especially for NVIDIA and Intel.
   - for AMD it should work (works on my machine `;-)`)
 - Desktop Environment (optional via config, current default/only: Gnome)
-- Encryption and keyfile (each optional via config)
+- Encryption; GRUB: keyfile to autom. decrypt root partition (each optional via config)
 - Swap: partition, file or none (set via config, current default: none)
 - Zram: usage as swap (set via config, current default)
 - Virtualization support (QEMU/KVM, optional via config)
 
 ## Limitations
 - no seperate 'home' partition
-- only Grub bootloader
 - only Gnome Desktop Environment or no DE (optional via config)
 - no multi-boot
 - no LVM or RAID
