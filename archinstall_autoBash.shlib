@@ -1016,6 +1016,9 @@ config-bootloader-systemdboot() {
     # uuidRootPartition=$(blkid | grep "${rootPartition}" | cut -d '"' -f 2) # chroot: $rootPartition read from file $fileRootPartition; see config file
     echo -e "uuidRootPartition: ${uuidRootPartition}\n"
 
+    rootPartitionIsNvme="false"
+    if [[ "${rootPartition}" == *nvme* ]]; then rootPartitionIsNvme="true"; fi
+
     # ### TEST --------------------------------------------------------------------
     blkid
     # echo "uuidRootPartition: ${uuidRootPartition}"
@@ -1142,8 +1145,7 @@ config-bootloader-systemdboot() {
             content+="options    rootflags=subvol=/@ root=UUID=${uuidRootPartition} rw systemd.machine-id=${machineid}"
         fi
         content+=" nowatchdog" # https://wiki.archlinux.org/title/Improving_performance#Watchdogs # ok to set for non-critical home/desktop use case
-        # content+=" nvme_load=YES" # if (NVME) SSD
-        #
+        if [ "${rootPartitionIsNvme}" = "true" ]; then content+=" nvme_load=YES"; fi
         # ### ############################################
         # --- zram - set kernel parameter to disable zswap
         if [ "${zram}" = "true" ]; then content+=" ${zswapDisable_kernelOption}"; fi
