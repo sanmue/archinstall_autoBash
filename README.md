@@ -32,19 +32,20 @@ Bash script to automate Arch Linux installation
 - after reboot:
   - login as a user with sudo privileges
   - clone the repo again and `cd` into it (for instructions: see further above)
-  - only if bootloader is systemd-boot:
-    - for [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) (rescue system)
+  - for [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) (rescue system)
+    - only if bootloader is systemd-boot
     - download the archlinux installation iso to the 'Downloads" folder of your currently logged in user
 - execute the script: `./archinstall_autoBash_afterReboot.sh` (as a user with sudo privileges)
   - installs 'snapper-rollback' (if set in confg, default: true)
-  - only if bootloader is systemd-boot: [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) (rescue system), 
+  - [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) (rescue system)
+    - only if bootloader is systemd-boot
     - if the script can not find the archlinux installation iso in the 'Downloads' folder, this step will be skipped
 
 ## Features
 
 - Bootloader: GRUB and systemd-boot
   - systemd-boot for UEFI boot mode and GRUB Bootloader for Bios boot mode (default, set/change via config)
-- UEFI or BIOS boot mode (detected automatically) with [GPT](https://wiki.archlinux.org/title/Partitioning#GUID_Partition_Table)
+- UEFI or BIOS (detected automatically) with [GPT](https://wiki.archlinux.org/title/Partitioning#GUID_Partition_Table)
   - for BIOS / MBR: set MBR manually in config
 - Encryption
   - GRUB: keyfile to automatically decrypt root partition (default, optional, set/change via config)
