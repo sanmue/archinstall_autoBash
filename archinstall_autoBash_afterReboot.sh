@@ -47,7 +47,7 @@ else
 fi
 
 # ### --------------------------------------------------------------------------------
-# zram: moved to archinstall_autoBash_chroot.sh
+# zram: ! moved to archinstall_autoBash_chroot.sh !
 # ###
 #
 # --- zram:
@@ -93,6 +93,37 @@ fi
 #     echo -e "\e[1;33m- 'zram' not set to 'true' in config file, skipping \e[39m"
 # fi
 # ### END zram --------------------------------------------------------------------------------
+
+
+# ### --------------------------
+# Archiso on ESP (rescue system)
+# - https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP
+if [ "${archisoOnESP}" = "true" ] && [ "${bootloader}" = "systemd-boot" ]; then
+    downloadFolder="${HOME}/Downloads"
+    isoFileName=""
+    searchPattern="archlinux*.iso"
+    archiso=""
+
+    echo -e "\e[0;35m## Archiso on ESP\e[39m"
+    echo "Please make sure you downloaded the archlinux installation iso to '${downloadFolder}'"
+    # read -r -p "Press enter to continue"
+
+    # archlinux-YYYY.MM.DD-x86_64.iso, e.g.: /home/userid/Downloads/archlinux-2024.11.01-x86_64.iso
+    isoFileName=$(find "${downloadFolder}" -mindepth 1 -maxdepth 1 -prune -type f -name "${searchPattern}" | cut -d'/' -f5)
+    if [ -z "${isoFileName}" ]; then
+        echo -e "\e[0;31mNo archlinix installation iso found, skipping step 'Archiso on ESP'...\e[39m"
+        echo "You can download the iso to '${downloadFolder}' and start this script again later."
+    else
+        echo "- found iso-file: '${isoFileName}' in '${downloadFolder}'"
+        # isoFileName=$(ls "${downloadFolder}" | grep arch\.\*.iso\$)
+        # shopt -s extglob
+        # isoFileName=$(ls -- "${downloadFolder}/arch*.iso" | cut -d'/' -f5)
+
+        archiso="${downloadFolder}/${isoFileName}"
+        config-archisoOnEsp "${archiso}"
+    fi
+fi
+# ### END Archiso on ESP -------
 
 
 # --- Info message:

@@ -30,48 +30,44 @@ Bash script to automate Arch Linux installation
   - `./archinstall_autoBash.sh`
     - remember to make the script files executable first, or simply all files in the folder: `chmod +x *`
 - after reboot:
+  - login as a user with sudo privileges
   - clone the repo again and `cd` into it (for instructions: see further above)
+  - only if bootloader is systemd-boot:
+    - for [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) (rescue system)
+    - download the archlinux installation iso to the 'Downloads" folder of your currently logged in user
 - execute the script: `./archinstall_autoBash_afterReboot.sh` (as a user with sudo privileges)
-  - installs 'snapper-rollback', zram
-  - if set in config file
-
-### Some points of the current default configuration:
-
-- Btrfs filesystem with subvolumes (flat layout, configurable), snapper snapshots
-  - and [snapper-rollback (AUR)](https://aur.archlinux.org/packages/snapper-rollback) (needs running a separate script after reboot as user with sudo privileges)
-- UEFI or BIOS (detected automatically) with GPT
-  - for BIOS / MBR: set MBR manually in config
-- systemd-boot (UEFI boot mode) and GRUB Bootloader (Bios boot mode)
-- Encryption
-- keyfile to automatically decrypt root partition on boot (only relevant for GRUB)
-- ['zram'](https://wiki.archlinux.org/title/Zram) used as swap (size: 50% of RAM size)
-- no swap file, no swap partition
-- Grafics cards drivers (detected automatically, no 32bit application support), needs testing
-  - AMD: should work
-  - Intel: needs manual config, not testet, see Arch Wiki for current info
-  - NVIDIA: needs manual config, not testet, see Arch Wiki for current info
-- Gnome Desktop Environment
-  - with additional packages: Firefox and VLC Media Player (change via config)
-- Post-install (after reboot):
-  - snapper-rollback
+  - installs 'snapper-rollback' (if set in confg, default: true)
+  - only if bootloader is systemd-boot: [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) (rescue system), 
+    - if the script can not find the archlinux installation iso in the 'Downloads' folder, this step will be skipped
 
 ## Features
 
-- Bootloaders: GRUB and systemd-boot
-- Partitioning + formating of the disk (optional via config)
-  - if you set to btrfs filesystem: creates + mounts subvolumes based on the specified subvolume layout (set via config)
-- Snapper snapshots for root subvolume (optional via config)
-  - if btrfs filesystem is specified and snapper set to 'true' in the config
-- Snapper-rollback (AUR) for simple rollback to a previous snapshot
-  - if set to 'true' in the config, only in combination with btrfs and snapper
-- Grafics card package installation (optional via config)
-  - consult the arch wiki for current info, change if necessary to the correct packages for your system, especially for NVIDIA and Intel.
-  - for AMD it should work (works on my machine `;-)`)
-- Desktop Environment (optional via config, current default/only: Gnome)
-- Encryption; GRUB: keyfile to autom. decrypt root partition (each optional via config)
+- Bootloader: GRUB and systemd-boot
+  - systemd-boot for UEFI boot mode and GRUB Bootloader for Bios boot mode (default, set/change via config)
+- UEFI or BIOS boot mode (detected automatically) with [GPT](https://wiki.archlinux.org/title/Partitioning#GUID_Partition_Table)
+  - for BIOS / MBR: set MBR manually in config
+- Encryption
+  - GRUB: keyfile to automatically decrypt root partition (default, optional, set/change via config)
+- Btrfs filesystem with subvolumes (flat layout, set/change via config)
+- Partitioning + formating of the disk (optional, set/change via config)
 - Swap: partition, file or none (set via config, current default: none)
-- Zram: usage as swap (set via config, current default)
-- Virtualization support (QEMU/KVM, optional via config)
+- ['zram'](https://wiki.archlinux.org/title/Zram): usage as swap (default, set/change via config)
+- Snapper snapshots for root subvolume (optional, set/change via config)
+  - only if btrfs filesystem is specified and snapper set to 'true' in config
+- Grafics cards drivers (optional, set/change via config)
+  - detected automatically, no 32bit application support, needs testing
+  - AMD: should work (works on my machine `;-)`)
+  - Intel: needs manual config, not testet, see Arch Wiki for current info
+  - NVIDIA: needs manual config, not testet, see Arch Wiki for current info
+- Desktop Environment (default: Gnome, or none; set/change via config)
+  - with additional packages: Firefox and VLC Media Player (set/change via config)
+- Virtualization support (QEMU/KVM) (default: false (no install), optional, set/change via config)
+- Post-install (after reboot):
+  - [snapper-rollback (AUR)](https://aur.archlinux.org/packages/snapper-rollback) for simple rollback to a desired snapshot (default: true (install), optional, set/change via config)
+    - only in combination with btrfs filesystem and snapper
+  - Archiso on ESP (rescue system) (default: true (makes the config), optional, set/change via config)
+    - only if bootloader is systemd-boot
+    - requires manual download of archlinux install iso to 'Downloads' folder
 
 ## Limitations
 - no seperate 'home' partition
@@ -79,4 +75,5 @@ Bash script to automate Arch Linux installation
 - no multi-boot
 - no LVM or RAID
 - if opted for virtualization: no nested virtualization configured
+- btrfs filesystemt is set by default. If you set to another filesystem in the config: not tested
 - ...

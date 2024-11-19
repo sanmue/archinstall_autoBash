@@ -1163,7 +1163,7 @@ config-bootloader-systemdboot() {
         sed -i "s|${initrdLine}|${initrdLineFallback}|g" "${loaderEntryFileFallback}"
 
         # - Check config:
-        echo "bootctl --no-pager:"
+        echo "Check systemd-boot config via 'bootctl --no-pager':"
         bootctl --no-pager # TODO: error handling # On success, 0 is returned, a non-zero failure code otherwise.
     done
 
@@ -1172,6 +1172,40 @@ config-bootloader-systemdboot() {
     # echo -e "\nPress Enter to continue - config-bootloader-systemdboot "
     # read -r
     # ### TEST --------------------------------------------------------------------
+}
+
+# post-install - Archiso on ESP"
+config-archisoOnEsp() {
+    archiso="${1}" # Parameter 1 # e.g.: /home/userid/Downloads/archlinux-2024.11.01-x86_64.iso
+    espArchisoFolderName="archiso"
+    espArchisoFolder="${pathEfi}/EFI/${espArchisoFolderName}"
+    espLoaderEntriesConfFileName="arch-rescue.conf"
+    espLoaderEntriesConfFile="${pathEfi}/loader/entries/${espLoaderEntriesConfFileName}"
+    title="Arch Linux (rescue system)"
+    linux="/EFI/${espArchisoFolderName}/boot/x86_64/vmlinuz-linux"
+    initrd="/EFI/${espArchisoFolderName}/boot/x86_64/initramfs-linux.img"
+    options="options archisobasedir=/EFI/${espArchisoFolderName} archisosearchfilename=/EFI/${espArchisoFolderName}/boot/x86_64/vmlinuz-linux"
+    content=""
+
+    if [[ -n $(sudo ls "${espArchisoFolder}") ]]; then
+        echo -e "\e[1;33mFolder '${espArchisoFolder}' already exists. Skipping 'config-archisoOnEsp'\e[39m"
+        return 0
+    else
+        echo -e "- Creating folder '${espArchisoFolder}'..."
+        sudo mkdir -p "${espArchisoFolder}"
+    fi
+    sudo bsdtar -v -x --no-same-permissions --strip-components 1 -f "${archiso}" -C "${espArchisoFolder}" arch
+
+    sudo touch "${espLoaderEntriesConfFile}"
+    content+="title ${title}\n"
+    content+="linux ${linux}\n"
+    content+="initrd ${initrd}\n"
+    content+="options ${options}\n"
+    echo -e "${content}" | sudo tee "${espLoaderEntriesConfFile}"
+
+    # - Check config:
+    echo "- Check systemd-boot config via 'bootctl --no-pager':"
+    sudo bootctl --no-pager # TODO: error handling # On success, 0 is returned, a non-zero failure code otherwise.
 }
 
 config-mkinitcpio() {
