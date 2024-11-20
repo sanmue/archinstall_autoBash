@@ -1178,19 +1178,33 @@ config-bootloader-systemdboot() {
 config-systemOnEsp() {
     iso="${1}" # Parameter 1 # e.g.: /home/userid/Downloads/archlinux-2024.11.01-x86_64.iso
     espSystemFolderName="${2}" # Parameter 2 # e.g.: "archiso"
+    isoFileName="${3}" # Parameter 3 # e.g.: "grml64-full_2024.02.iso"
+
     espSystemFolder="${pathEfi}/EFI/${espSystemFolderName}" # e.g. /efi/EFI/archiso
-    espLoaderEntriesConfFileName="arch-rescue.conf"
+    espLoaderEntriesConfFileName="${espSystemFolderName}.conf"
     espLoaderEntriesConfFile="${pathEfi}/loader/entries/${espLoaderEntriesConfFileName}"
-    title="Arch Linux (rescue system)"
-    linux="/EFI/${espSystemFolderName}/boot/x86_64/vmlinuz-linux"
-    initrd="/EFI/${espSystemFolderName}/boot/x86_64/initramfs-linux.img"
-    options="options archisobasedir=/EFI/${espSystemFolderName} archisosearchfilename=/EFI/${espSystemFolderName}/boot/x86_64/vmlinuz-linux"
+    
+    # set values for loader entry
+    title="${espSystemFolderName} (live system)"
+    if [ "${system}" = "archiso" ]; then
+        linux="/EFI/${espSystemFolderName}/boot/x86_64/vmlinuz-linux"
+        initrd="/EFI/${espSystemFolderName}/boot/x86_64/initramfs-linux.img"
+        options="options archisobasedir=/EFI/${espSystemFolderName} archisosearchfilename=/EFI/${espSystemFolderName}/boot/x86_64/vmlinuz-linux"
+    elif [ "${system}" = "grml" ]; then
+        linux="/EFI/${espSystemFolderName}/vmlinuz"
+        initrd="/EFI/${espSystemFolderName}/initrd.img"
+        options="options apm=power-off boot=live live-media-path=/EFI/${espSystemFolderName}/ nomce net.ifnames=0"
+    else
+        echo "'${espSystemFolderName}' - config-systemOnEsp - no config available yet."
+        return 0
+    fi
 
     content=""
     freeDiskpace=0
     availableDiskpace=0
 
-    if [[ -n $(sudo ls "${espSystemFolder}") ]]; then
+    # check available disk space an create espSystemFolder:
+    if [[ -n $(sudo ls "${espSystemFolder}") ]]; then # if folder not exists thows error message, but continues with else (coud add 2>/dev/null)
         echo -e "\e[1;33mFolder '${espSystemFolder}' already exists. Skipping 'config-systemOnEsp'\e[39m"
         return 0
     else
@@ -1206,8 +1220,25 @@ config-systemOnEsp() {
             sudo mkdir -p "${espSystemFolder}"
         fi
     fi
-    sudo bsdtar -v -x --no-same-permissions --strip-components 1 -f "${iso}" -C "${espSystemFolder}" arch
 
+    # copy files to espSystemFolder (kernel, initramfs, squashed image (grml)):
+    if [ "${system}" = "archiso" ]; then
+        sudo bsdtar -v -x --no-same-permissions --strip-components 1 -f "${iso}" -C "${espSystemFolder}" arch
+    elif [ "${system}" = "grml" ]; then
+        grmlFlavour=$(echo "${isoFileName}" | cut -d'_' -f1) # e.g.: grml64-full
+        # grmlFlavourBootFolder=$(echo "${grmlFlavour}" | sed 's/-//g') # e.g.: grml64full
+        grmlFlavourBootFolder="${grmlFlavour/-/}" # e.g.: grml64full
+        sudo mount "${iso}" /mnt
+        sudo cp -vf "/mnt/boot/${grmlFlavourBootFolder}/vmlinuz" "${espSystemFolder}"
+        sudo cp -vf "/mnt/boot/${grmlFlavourBootFolder}/initrd.img" "${espSystemFolder}"
+        sudo cp -vf "/mnt/live/${grmlFlavour}/${grmlFlavour}.squashfs" "${espSystemFolder}"
+        sudo umount /mnt
+    else
+        echo "${system}' - config-systemOnEsp - no config available yet."
+        return 0
+    fi
+    
+    # create loader entry:
     sudo touch "${espLoaderEntriesConfFile}"
     content+="title ${title}\n"
     content+="linux ${linux}\n"
