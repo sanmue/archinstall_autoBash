@@ -60,7 +60,7 @@ Bash script to automate Arch Linux installation
   - Intel: needs manual config, not testet, see Arch Wiki for current info
   - NVIDIA: needs manual config, not testet, see Arch Wiki for current info
 - Desktop Environment (default: Gnome, or none; set/change via config)
-  - with additional packages: Firefox and VLC Media Player (set/change via config)
+  - with additional packages: Firefox (and spice-vdagent if VM) (set/change via config)
 - Virtualization support (QEMU/KVM) (default: false (no install), optional, set/change via config)
 - Post-install (after reboot):
   - [snapper-rollback (AUR)](https://aur.archlinux.org/packages/snapper-rollback) for simple rollback to a desired snapshot (default: true (install), optional, set/change via config)
