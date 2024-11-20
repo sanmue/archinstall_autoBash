@@ -31,15 +31,14 @@ Bash script to automate Arch Linux installation
     - remember to make the script files executable first, or simply all files in the folder: `chmod +x *`
 - after reboot:
   - login as a user with sudo privileges
-  - clone the repo again and `cd` into it (for instructions: see further above)
-  - for [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) (rescue system)
-    - only if bootloader is systemd-boot
-    - download the archlinux installation iso to the 'Downloads" folder of your currently logged in user
-- execute the script: `./archinstall_autoBash_afterReboot.sh` (as a user with sudo privileges)
-  - installs 'snapper-rollback' (if set in confg, default: true)
-  - [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) (rescue system)
-    - only if bootloader is systemd-boot
-    - if the script can not find the archlinux installation iso in the 'Downloads' folder, this step will be skipped
+  - clone the repo again and `cd` into it (for instructions: see further above)   
+  - execute the script: `./archinstall_autoBash_afterReboot.sh` (as a user with sudo privileges)
+    - installs 'snapper-rollback' (default=true, set/change via config)
+    - bootable live system on ESP (e.g. for system rescue) (default, set/change via config)
+      - [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) and [Grml on ESP](https://wiki.archlinux.org/title/Systemd-boot#Grml_on_ESP) currently supported
+      - only if bootloader is systemd-boot
+      - requires manual download of installation iso to 'Downloads' folder of your currently logged in user before
+      - if the script can not find the installation iso in the 'Downloads' folder, this step will be skipped
 
 ## Features
 
@@ -66,9 +65,11 @@ Bash script to automate Arch Linux installation
 - Post-install (after reboot):
   - [snapper-rollback (AUR)](https://aur.archlinux.org/packages/snapper-rollback) for simple rollback to a desired snapshot (default: true (install), optional, set/change via config)
     - only in combination with btrfs filesystem and snapper
-  - Archiso on ESP (rescue system) (default: true (makes the config), optional, set/change via config)
+- bootable live system on ESP (e.g. for system rescue)
+    - [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) (rescue system) and [Grml on ESP](https://wiki.archlinux.org/title/Systemd-boot#Grml_on_ESP) currently supported (default, optional, set/change via config)
     - only if bootloader is systemd-boot
-    - requires manual download of archlinux install iso to 'Downloads' folder
+    - requires manual download of installation iso to 'Downloads' folder
+    - if the script can not find the installation iso in the 'Downloads' folder, this step will be skipped
 
 ## Limitations
 - no seperate 'home' partition
