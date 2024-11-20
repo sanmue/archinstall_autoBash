@@ -1174,27 +1174,39 @@ config-bootloader-systemdboot() {
     # ### TEST --------------------------------------------------------------------
 }
 
-# post-install - Archiso on ESP"
-config-archisoOnEsp() {
-    archiso="${1}" # Parameter 1 # e.g.: /home/userid/Downloads/archlinux-2024.11.01-x86_64.iso
-    espArchisoFolderName="archiso"
-    espArchisoFolder="${pathEfi}/EFI/${espArchisoFolderName}"
+# post-install - System on ESP (e.g. Archiso, Grml)
+config-systemOnEsp() {
+    iso="${1}" # Parameter 1 # e.g.: /home/userid/Downloads/archlinux-2024.11.01-x86_64.iso
+    espSystemFolderName="${2}" # Parameter 2 # e.g.: "archiso"
+    espSystemFolder="${pathEfi}/EFI/${espSystemFolderName}" # e.g. /efi/EFI/archiso
     espLoaderEntriesConfFileName="arch-rescue.conf"
     espLoaderEntriesConfFile="${pathEfi}/loader/entries/${espLoaderEntriesConfFileName}"
     title="Arch Linux (rescue system)"
-    linux="/EFI/${espArchisoFolderName}/boot/x86_64/vmlinuz-linux"
-    initrd="/EFI/${espArchisoFolderName}/boot/x86_64/initramfs-linux.img"
-    options="options archisobasedir=/EFI/${espArchisoFolderName} archisosearchfilename=/EFI/${espArchisoFolderName}/boot/x86_64/vmlinuz-linux"
-    content=""
+    linux="/EFI/${espSystemFolderName}/boot/x86_64/vmlinuz-linux"
+    initrd="/EFI/${espSystemFolderName}/boot/x86_64/initramfs-linux.img"
+    options="options archisobasedir=/EFI/${espSystemFolderName} archisosearchfilename=/EFI/${espSystemFolderName}/boot/x86_64/vmlinuz-linux"
 
-    if [[ -n $(sudo ls "${espArchisoFolder}") ]]; then
-        echo -e "\e[1;33mFolder '${espArchisoFolder}' already exists. Skipping 'config-archisoOnEsp'\e[39m"
+    content=""
+    freeDiskpace=0
+    availableDiskpace=0
+
+    if [[ -n $(sudo ls "${espSystemFolder}") ]]; then
+        echo -e "\e[1;33mFolder '${espSystemFolder}' already exists. Skipping 'config-systemOnEsp'\e[39m"
         return 0
     else
-        echo -e "- Creating folder '${espArchisoFolder}'..."
-        sudo mkdir -p "${espArchisoFolder}"
+        freeDiskpace=$(sudo df --output=avail "${pathEfi}" | tail -n+2 | xargs)
+        freeDiskpace=$(("${freeDiskpace}" / 1024)) # size in MB
+        availableDiskpace=$(("${freeDiskpace}"-"${bufferDiskspaceESP}"))
+        if [ "${availableDiskpace}" -lt "${requiredDiskspaceSystemOnESP}" ]; then
+            echo -e "\e[0;31mNot enough disk space. Skipping 'config-systemOnEsp' !\e[39m"
+            echo -e "\e[0;31mavailableDiskpace (reduced by buffer size): ${availableDiskpace}, requiredDiskspaceSystemOnESP: ${requiredDiskspaceSystemOnESP}\e[39m"
+            return 1
+        else
+            echo -e "- Creating folder '${espSystemFolder}'..."
+            sudo mkdir -p "${espSystemFolder}"
+        fi
     fi
-    sudo bsdtar -v -x --no-same-permissions --strip-components 1 -f "${archiso}" -C "${espArchisoFolder}" arch
+    sudo bsdtar -v -x --no-same-permissions --strip-components 1 -f "${iso}" -C "${espSystemFolder}" arch
 
     sudo touch "${espLoaderEntriesConfFile}"
     content+="title ${title}\n"

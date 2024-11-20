@@ -120,7 +120,7 @@ if [ "${archisoOnESP}" = "true" ] && [ "${bootloader}" = "systemd-boot" ]; then
         # isoFileName=$(ls -- "${downloadFolder}/arch*.iso" | cut -d'/' -f5)
 
         archiso="${downloadFolder}/${isoFileName}"
-        config-archisoOnEsp "${archiso}"
+        config-systemOnEsp "${archiso}" "archiso" # P1: path to archiso # P2: folder name on efi partition for system
     fi
 fi
 # ### END Archiso on ESP -------
