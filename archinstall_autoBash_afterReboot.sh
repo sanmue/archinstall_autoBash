@@ -102,27 +102,34 @@ fi
 if [ "${bootloader}" = "systemd-boot" ]; then
     downloadFolder="${HOME}/Downloads"
 
-    echo -e "\e[0;35m## System on ESP\e[39m"
-    echo "Please make sure you downloaded the installation iso to '${downloadFolder}'"
+    echo -e "\n\e[0;35m## System on ESP\e[39m"
+    echo -e "Please make sure you downloaded the installation iso to '${downloadFolder}'\n"
 
     for system in "${systemOnESP[@]}"; do
         isoFileName=""
         iso=""
 
-        if [ "${system}" = "archiso" ]; then
-            searchPattern="archlinux*.iso"
-        elif [ "${system}" = "grml" ]; then
-            searchPattern="grml64-full*.iso"
-        else
-            continue
-        fi
+        case "${system}" in
+            archiso)
+                searchPattern="archlinux*.iso"
+            ;;
+            grml)
+                searchPattern="grml64-full*.iso"
+            ;;
+            sysresccd)
+                searchPattern="systemrescue*.iso"
+            ;;
+            *)
+                continue
+            ;;
+        esac
 
         # e.g.: archlinux-YYYY.MM.DD-x86_64.iso # grml64-FLAVOUR_YEAR.MONTH.iso
         # e.g.: /home/userid/Downloads/archlinux-2024.11.01-x86_64.iso # /home/userid/Downloads/grml64-full_2024.02.iso
         isoFileName=$(find "${downloadFolder}" -mindepth 1 -maxdepth 1 -prune -type f -name "${searchPattern}" | cut -d'/' -f5)
         if [ -z "${isoFileName}" ]; then
-            echo -e "\e[0;31mNo installation iso found. Skipping 'System on ESP' for '${system}'\e[39m"
-            echo "You can download the iso to '${downloadFolder}' and start this script again later."
+            echo -e "\e[1;33mSkipping 'System on ESP' for '${system}'. No installation iso found.\e[39m"
+            echo "- You can download the iso to '${downloadFolder}' and start this script again."
         else
             echo "- found iso-file: '${isoFileName}' in '${downloadFolder}'"
             # isoFileName=$(ls "${downloadFolder}" | grep arch\.\*.iso\$)
@@ -134,7 +141,7 @@ if [ "${bootloader}" = "systemd-boot" ]; then
             fi
     done
 else
-    echo "Skipping 'System on ESP (rescue system)'. Currently only available for systemd-boot."
+    echo -e "\e[1;33mSkipping 'System on ESP (rescue system)'. Currently only available for systemd-boot.\e[39m"
 fi
 # ### END System on ESP -------
 

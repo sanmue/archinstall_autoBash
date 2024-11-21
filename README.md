@@ -35,10 +35,10 @@ Bash script to automate Arch Linux installation
   - execute the script: `./archinstall_autoBash_afterReboot.sh` (as a user with sudo privileges)
     - installs 'snapper-rollback' (default=true, set/change via config)
     - bootable live system on ESP (e.g. for system rescue) (default, set/change via config)
-      - [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) and [Grml on ESP](https://wiki.archlinux.org/title/Systemd-boot#Grml_on_ESP) currently supported
+      - [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) and [Grml on ESP](https://wiki.archlinux.org/title/Systemd-boot#Grml_on_ESP) and [SystemRescue](https://www.system-rescue.org/) on ESP currently supported
       - only if bootloader is systemd-boot
       - requires manual download of installation iso to 'Downloads' folder of your currently logged in user before
-      - if the script can not find the installation iso in the 'Downloads' folder, this step will be skipped
+      - if the script can not find the installation iso in the 'Downloads' folder, this step will be skipped (after iso download you can execute the script again)
 
 ## Features
 
@@ -66,10 +66,11 @@ Bash script to automate Arch Linux installation
   - [snapper-rollback (AUR)](https://aur.archlinux.org/packages/snapper-rollback) for simple rollback to a desired snapshot (default: true (install), optional, set/change via config)
     - only in combination with btrfs filesystem and snapper
 - bootable live system on ESP (e.g. for system rescue)
-    - [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) (rescue system) and [Grml on ESP](https://wiki.archlinux.org/title/Systemd-boot#Grml_on_ESP) currently supported (default, optional, set/change via config)
+    - [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) and [Grml on ESP](https://wiki.archlinux.org/title/Systemd-boot#Grml_on_ESP) and [SystemRescue](https://www.system-rescue.org/) on ESP currently supported (default, optional, set/change via config)
     - only if bootloader is systemd-boot
     - requires manual download of installation iso to 'Downloads' folder
     - if the script can not find the installation iso in the 'Downloads' folder, this step will be skipped
+    - after iso download you can execute the "after boot"-script again
 
 ## Limitations
 - no seperate 'home' partition

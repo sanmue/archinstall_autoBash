@@ -56,7 +56,7 @@ if [ ${partitionDisk} = "true" ]; then          # if partitioning the device sho
     erase-device "${device}" "${blockSize}"     # executed only if eraseDisk="true" is set # the device will be erased (overwritten via dd command)
     partition-disk "${bootMode}" "${partitionType}" "${device}" "${swapSize}" "${efiPartitionSize}"   # partition the device
     echo "- show available block devices:"
-    lsblk | grep --extended-regexp --invert-match 'rom|loop|airoot'   # show result   # lsblk | grep "${deviceName}"
+    lsblk | grep --extended-regexp --invert-match 'rom|loop|airoot' # show result # lsblk | grep "${deviceName}"
 fi
 
 if [ ${formatPartition} = "true" ]; then        # if formatting the partitions should be executed by the script
@@ -203,9 +203,9 @@ fi
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
 echo "- unmounting /mnt"
 umount -R /mnt
-echo -e "\n\e[1;31m\! Initial password: '${initialPassword}'\e[39m"
-echo "  for 'root' and created users"
-echo -e "\e[1;31m\! Please change after reboot\e[39m"
+echo -e "\n\e[1;31mInitial password: '${initialPassword}'\e[39m"
+echo    "for 'root' and created users"
+echo -e "\e[1;31mPlease change after reboot!\e[39m"
 echo -e "\nRemember script 'archinstall_autoBash_afterReboot.sh'"
 echo -e "\nFinished, rebooting in 5 seconds..."
 

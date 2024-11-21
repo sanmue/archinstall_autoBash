@@ -93,7 +93,7 @@ fi
 
 echo -e "\n\e[0;35m## Initramfs \e[39m"
 # Initramfs: For LVM, system encryption or RAID, modify mkinitcpio.conf(5) and recreate the initramfs image
-echo -e "\n\e[0;35m- Configuring mkinitcpio \e[39m"
+echo -e "\n- Configuring mkinitcpio..."
 # modify mkinitcpio.conf:
 config-mkinitcpio
 # (re)generate initramfs:
