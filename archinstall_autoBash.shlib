@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
-set -x   # enable debug mode
+# set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.shlib
