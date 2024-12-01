@@ -61,7 +61,7 @@ fi
 
 if [ ${formatPartition} = "true" ]; then        # if formatting the partitions should be executed by the script
     echo -e "\n\e[0;35m## Formating the partitions\e[39m"
-    
+
     # if encryption="true": the root partition will be encrypted with luks
     format-partition "${device}" "${bootMode}" "${partitionType}" "${filesystemType}" "${fileSystemTypeEfi}" "${fatSize}" "${partitionLabelRoot}" "${partitionLabelEfi}" "${partitionLabelHome}" "${partitionLabelSwap}"
 fi
@@ -185,12 +185,14 @@ rm /mnt/root/archinstall_autoBash.shlib
 rm "/mnt/root/${fileDeviceName}"
 rm "/mnt/root/${fileRootPartition}"
 
-
 # config snapper:
 if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ]; then
     echo -e "\n\n\e[0;36m# Configure snapper for root subvolume \e[39m"
     config-snapperLiveEnv "${snapperConfigName_root}" "/mnt" "/" # '/mnt' = current mount path of (root) subvolume, /' = final 'real' path of (root) subvolume to create the config for
 fi
+
+# flag file:
+sudo touch "${flagFile}"
 
 
 # ### TEST --------------------------------------------------------------------
