@@ -1,15 +1,23 @@
 
-# ### ##########
-# --- rollback()
-# function to rollback to a specified snapshot ID using snapper-rollback (AUR)
-# takes 1 parameter: snapshot ID to rollback to
-# example: 'rollback 8'
+# ### -------------------------------------------------------------------------
+# Description
+# * using snapper-rollback (AUR) to rollback to a specified snapshot ID
+# * only if system:
+#   - was installed via 'archinstall_autobash'
+#   - uses 'systemd-boot' bootloader
+# ---
+# Parameter
+# * parameter 1 (required): snapshot ID to rollback to
+# ---
+# Example
+# * enter in terminal: 'rollback 8'
+# ### -------------------------------------------------------------------------
 rollback() {
   local snapshotsSubvolPath="/.snapshots"
   local machineID=$(cat /etc/machine-id)
   local efiPartitionPath="/efi"
   local efiPartition_targetPath="${efiPartitionPath}/${machineID}/" # destination for kernel and initramfs matching the snapshot ID to rollback to
-  
+
   if [ "$#" -eq 1 ] && [ "${1}" -ge 1 ]; then # if exactly 1 parameter passed and is an integer >= 1
     local snapshotID="${1}" # Parameter 1: snapshot ID to rollback to
     local snapshot_bootFolder="${snapshotsSubvolPath}/${snapshotID}/snapshot/boot/" # source path of kernel and initramfs matching the snapshot ID to rollback to
@@ -18,18 +26,18 @@ rollback() {
     echo -e "Example: 'rollback 8'\nTo find the snapshot ID execute 'sudo snapper list'"
     return
   fi
- 
+
   if [[ $(command -v snapper-rollback) ]]; then
     echo "Installing 'rsync' if not available..."
     sudo pacman -S --needed --noconfirm rsync # ensure rsync is installed
-    
+
     local mode="test"
     read -rp "Do you want to just test or execute the rollback? ('e' = execute, other input = test): " mode
     local rollbackParameter=""
     local rsyncParameter=""
     if [ "${mode}" = "e" ]; then
         sudo snapper-rollback "${snapshotID}"
-        
+
         echo -e "\nCopy kernel and initramfs from snapshot ${snapshotID} to '${efiPartition_targetPath}'..."
         sudo rsync -aPhEv --delete --exclude *ucode.img "${snapshot_bootFolder}" "${efiPartition_targetPath}"
     else

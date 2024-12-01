@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2154
 
-# set -x   # enable debug mode
+set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash.shlib
@@ -762,30 +762,27 @@ config-snapperRollback() { # called in a separate script after reboot
 # since this function also copies kernel and initramfs to efi partition
 # For GRUB use standard 'sudo snapper-rollback <snapshotID>'
 config-shellConfUser-rollbackFunction() {
-    if [ "${defaultShellUser}" = "bash" ]; then
-        shellConfFileName=".bashrc"    
-    elif [ "${defaultShellUser}" = "zsh" ]; then
-        shellConfFileName=".zshrc"
-    else
-        echo "Sorry, conf file for your shell unknown. You have to add (and adjust) the rollback function manually."
-        echo "File containing the function is here: '${filesDirName}/${rollbackFunctionFileName}'"
+    if [[ ! -e "${rollbackScriptSource}" ]]; then # http://mywiki.wooledge.org/BashFAQ/028
+        echo >&2 "Please cd into the repo before running this script."
         return 1
     fi
 
-    shellConfFile="${HOME}/${shellConfFileName}"
-    rollbackFunctionFile="${filesDirName}/${rollbackFunctionFileName}"
-    if [[ ! -e "${rollbackFunctionFile}" ]]; then # http://mywiki.wooledge.org/BashFAQ/028
-        echo >&2 "Please cd into the repo before running this script."
-        return 1
-    else
-        echo "Adding rollback function to '${shellConfFile}'."
+    echo -e "\nCopy rollback script '${rollbackScriptName}' to '${rollbackScriptTargetPath}'..."
+    sudo cp -vf "${rollbackScriptSource}" "${rollbackScriptTargetPath}/"
+    sudo chmod 755 "${rollbackScriptTargetPath}/${rollbackScriptName}"
+
+    echo -e "\nAdding an alias to shell conf to easily execute the script.\nCurrently only for: ${arrShellConfFileName[@]}.\nFor other shells / config must be done manually.\n"
+    for shellConfFileName in ${arrShellConfFileName[@]}; do
+        echo "Adding alias to '${shellConfFileName}'..."
+        shellConfFile=""
+        shellConfFile="${HOME}/${shellConfFileName}"
         if [[ ! -e  "${shellConfFile}" ]]; then touch "${shellConfFile}"; fi
-        if [[ -z $(grep "rollback() {" "${shellConfFile}") ]]; then
-            cat "${rollbackFunctionFile}" >> "${shellConfFile}"
+        if [[ -z $(grep "${rollbackScriptName}" "${shellConfFile}") ]]; then
+            echo "${rollbackShellConfAlias}" >> "${shellConfFile}"
         else
-            echo "Rollback function already in '${shellConfFile}', nothing to do."
+            echo "Alias already in '${shellConfFileName}', nothing to do."
         fi
-    fi
+    done
 }
 
 modify-locales() {
@@ -923,7 +920,7 @@ get-uuidRootPartition-chroot() {
     uuidRootPartition=""
     uuidRootPartition=$(lsblk -l -p -o Name,UUID | grep "${rootPartition}" | xargs | cut -d' ' -f2)
     # -l, --list: output in form of a list # -p, --paths: Print full device paths. # -o, --output <list>: Specify which output columns to print.
-    # /dev/vda   
+    # /dev/vda
     # /dev/vda1  ED26-00F7
     # /dev/vda2  7dc856b2-6b3a-41d4-9740-806f91b168aa
     #
@@ -1034,10 +1031,10 @@ config-bootloader-systemdboot() {
     touch "${efistubUpdatePath_file}"
     efistubPathContentParts=()
     efistubPathContentParts=(
-        "[Unit]" 
-        "Description=Copy EFISTUB Kernel to EFI system partition" 
-        "" 
-        "[Path]" 
+        "[Unit]"
+        "Description=Copy EFISTUB Kernel to EFI system partition"
+        ""
+        "[Path]"
     )
     content=""
     for contentPart in "${efistubPathContentParts[@]}"; do
@@ -1054,9 +1051,9 @@ config-bootloader-systemdboot() {
     efistubPathContentParts=(
         "Unit=${efistubUpdateServiceFilename}"
         ""
-        "[Install]" 
-        "WantedBy=multi-user.target" 
-        "WantedBy=system-update.target" 
+        "[Install]"
+        "WantedBy=multi-user.target"
+        "WantedBy=system-update.target"
     )
     content=""
     for contentPart in "${efistubPathContentParts[@]}"; do
@@ -1068,10 +1065,10 @@ config-bootloader-systemdboot() {
     touch "${efistubUpdateService_file}"
     efistubServiceContentParts=()
     efistubServiceContentParts=(
-        "[Unit]" 
-        "Description=Copy EFISTUB Kernel to EFI system partition" 
-        "" 
-        "[Service]" 
+        "[Unit]"
+        "Description=Copy EFISTUB Kernel to EFI system partition"
+        ""
+        "[Service]"
         "Type=oneshot"
     )
     content=""
@@ -1209,7 +1206,7 @@ config-systemOnEsp() {
             efiPartition=$(lsblk -l -p -o NAME,MOUNTPOINTS | grep "${pathEfi}" | xargs | cut -d' ' -f1) # e.g.: /dev/vda1
 
             if [ "$(sudo ls "${pathEfi}/EFI/archiso")" ]; then # we can us kernel and initramfs from archiso to start and then just load iso for sysresccd
-                linux=$(sudo grep '^linux' "${archEntry}" | cut -d' ' -f2) # e.g.: linux=$(sudo grep '^linux' /efi/loader/entries/archiso.conf | cut -d' ' -f2) 
+                linux=$(sudo grep '^linux' "${archEntry}" | cut -d' ' -f2) # e.g.: linux=$(sudo grep '^linux' /efi/loader/entries/archiso.conf | cut -d' ' -f2)
                 initrd=$(sudo grep '^initrd' "${archEntry}" | cut -d' ' -f2) # cut -> not prededed by 'linux'  oder 'initrd'
                 requiredDiskspaceSystemOnESP=1200
                 echo "- Can use kernel and initramfs from archiso"

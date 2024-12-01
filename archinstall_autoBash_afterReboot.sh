@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2034
 
-# set -x   # enable debug mode
+set -x   # enable debug mode
 
 # ----------------------------------------------------------------
 # Name                 archinstall_autoBash_afterReboot.sh
@@ -70,7 +70,7 @@ fi
 #     fi
 
 #     # echo -e "- check zswap state (if '...enabled: N' -> zswap is disabled):" # needs reboot first
-#     # grep -r . /sys/module/zswap/parameters/ | grep /enabled # or: cat /sys/module/zswap/parameters/enabled 
+#     # grep -r . /sys/module/zswap/parameters/ | grep /enabled # or: cat /sys/module/zswap/parameters/enabled
 
 #     echo -e "\nInstalling 'zram-generator'..."
 #     sudo pacman -S --needed --noconfirm zram-generator
