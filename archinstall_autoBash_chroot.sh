@@ -15,7 +15,7 @@
 # ------------------
 # Config / Variables
 # ------------------
-echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.config' \e[39m"
+echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.config' \e[0m"
 # shellcheck source=archinstall_autoBash.config
 source archinstall_autoBash.config      # including the separate file containing the config / variables used by the script
 
@@ -23,7 +23,7 @@ source archinstall_autoBash.config      # including the separate file containing
 # ---------
 # Functions
 # ---------
-echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.shlib' \e[39m"
+echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.shlib' \e[0m"
 # shellcheck source=archinstall_autoBash.shlib
 source archinstall_autoBash.shlib       # including the separate file containing the functions used by the script
 
@@ -32,23 +32,23 @@ source archinstall_autoBash.shlib       # including the separate file containing
 # main
 # ----
 
-echo -e "\n\e[0;35m## Time zone \e[39m"
+echo -e "\n\e[0;35m## Time zone \e[0m"
 set-timezone "${timezone}" /etc/localtime
 
-echo -e "\n\e[0;35m## Localization \e[39m"
+echo -e "\n\e[0;35m## Localization \e[0m"
 set-locales
 # TODO: optional: further customization of '/etc/locale.conf' (e.g. LC_ADDRESS, LC_IDENTIFICATION, ... for other locale than defaultLang)
 
-echo -e "\n\e[0;35m## Network configuration \e[39m"
+echo -e "\n\e[0;35m## Network configuration \e[0m"
 config-network
 
-echo -e "\n\e[0;35m## Root password \e[39m"
+echo -e "\n\e[0;35m## Root password \e[0m"
 set-password root   # set initial password
 
-echo -e "\n\e[0;35m## Grafics\e[39m"
+echo -e "\n\e[0;35m## Grafics\e[0m"
 install-grafics
 
-echo -e "\n\e[0;35m## zram installation + conf \e[39m"
+echo -e "\n\e[0;35m## zram installation + conf \e[0m"
 # https://wiki.archlinux.org/title/Zram#Using_zram-generator
 if [ "${zram}" = "true" ]; then
     echo -e "\nInstalling 'zram-generator'..."
@@ -75,10 +75,10 @@ fi
 # https://wiki.archlinux.org/title/Installation_guide#Initramfs
 # https://wiki.archlinux.org/title/Mkinitcpio#Manual_generation
 
-echo -e "\n\e[0;35m## Boot loader installation \e[39m"
+echo -e "\n\e[0;35m## Boot loader installation \e[0m"
 install-bootloader # including config for encryption, keyfile, zram (disable zswap)
 
-echo -e "\n\e[0;35m## Create and store keyfile \e[39m"
+echo -e "\n\e[0;35m## Create and store keyfile \e[0m"
 if [ "${encryption}" = "true" ] && [ "${keyfile}" = "true" ] && [ "${bootloader}" = "grub" ]; then
     dd bs=512 count=4 if=/dev/random iflag=fullblock | install -m 0600 /dev/stdin "${keyfilePath}"
     echo -e "- Configuring LUKS to make use of the keyfile. Enter encryption passphrase for root partition:"
@@ -91,7 +91,7 @@ else
     echo -e "- Skipping: bootloader not GRUB or no encryption/keyfile\n  bootloader: '${bootloader}', keyfile: '${keyfile}', encryption: '${encryption}'"
 fi
 
-echo -e "\n\e[0;35m## Initramfs \e[39m"
+echo -e "\n\e[0;35m## Initramfs \e[0m"
 # Initramfs: For LVM, system encryption or RAID, modify mkinitcpio.conf(5) and recreate the initramfs image
 echo -e "\n- Configuring mkinitcpio..."
 # modify mkinitcpio.conf:
@@ -116,29 +116,29 @@ fi
 # ### TEST --------------------------------------------------------------------
 
 # --- Post-installation (original position in wiki: after reboot) - ! order changed, was moved forward one position compared to the wiki ! ---
-echo -e "\n\n\e[0;36m# --- Post-installation part - brought forward (original position: after reboot --- \e[39m"
+echo -e "\n\n\e[0;36m# --- Post-installation part - brought forward (original position: after reboot --- \e[0m"
 
-echo -e "\n\e[0;35m## Installing additional packages \e[39m"
+echo -e "\n\e[0;35m## Installing additional packages \e[0m"
 install-additionalPackages
 
-echo -e "\n\e[0;35m## Enable Services \e[39m"
+echo -e "\n\e[0;35m## Enable Services \e[0m"
 enable-service
 
-echo -e "\n\e[0;35m## Creating unprivileged user accounts \e[39m"
+echo -e "\n\e[0;35m## Creating unprivileged user accounts \e[0m"
 create-userAccount
 config-sudoUser
 
-echo -e "\n\e[0;35m## Install graphical user interface \e[39m"
+echo -e "\n\e[0;35m## Install graphical user interface \e[0m"
 install-DesktopEnvironment
 
-echo -e "\n\e[0;35m## Install multimedia codecs \e[39m"
+echo -e "\n\e[0;35m## Install multimedia codecs \e[0m"
 if [ "${installMultimediaCodecs}" = "true" ]; then
     pacman -S --noconfirm --needed $strListMultimediaCodecs
 else
     echo "- Skipping since in config 'installMultimediaCodecs' not set to 'true'"
 fi # do not double quote ${installMultimediaCodecs}
 
-echo -e "\n\e[0;35m## Install additional fonts \e[39m"
+echo -e "\n\e[0;35m## Install additional fonts \e[0m"
 if [ "${installFont}" = "true" ]; then
     pacman -S --noconfirm --needed ${strListFontPkg}
 else

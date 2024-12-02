@@ -36,9 +36,9 @@ check-exitStatusLastCommand() {
     # Parameter 1: exit status (0 = no error)
 
     if [ "${1}" -ne 0 ]; then
-        echo -e "\e[0;31m----------------------------------------\e[39m"
-        echo -e "\e[0;31mERROR - Exit status last command: '${1}'\e[39m"
-        echo -e "\e[0;31m----------------------------------------\e[39m"
+        echo -e "\e[0;31m----------------------------------------\e[0m"
+        echo -e "\e[0;31mERROR - Exit status last command: '${1}'\e[0m"
+        echo -e "\e[0;31m----------------------------------------\e[0m"
         echo "Press Enter to continue." && read -r
     fi
 }
@@ -48,7 +48,7 @@ erase-device() {
     # Parameter 2: blocksize
 
     if [ "${eraseDisk}" = "true" ]; then   # Erase (overwrite) device
-        echo -e "\e[0;33m!!! Erasing '${1}', will take some time... !!!\e[39m"
+        echo -e "\e[0;33m!!! Erasing '${1}', will take some time... !!!\e[0m"
         echo "Press Enter to continue or '<CTRL> + <C>' to cancel"   # only for testing
         read -r                                                      # only for testing
         dd if=/dev/urandom of="${1}" bs="${2}" status=progress       # TODO: test # erase device by copying random bytes to the whole disk
@@ -267,7 +267,7 @@ format-partition() {
         echo -e "\nEnrypting root partition..."
         result=6666  # arbitrary number not equal to 0 (0 = no error in last command)
         while [ "$result" -ne 0 ]; do
-            if [ "$result" -ne 6666 ]; then echo -e "\e[1;33mPlease try again, something did not work.\e[39m"; fi
+            if [ "$result" -ne 6666 ]; then echo -e "\e[1;33mPlease try again, something did not work.\e[0m"; fi
             cryptsetup luksFormat --pbkdf pbkdf2 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Lable (-L) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
             result=$?
         done
@@ -356,7 +356,7 @@ set-partitionNo() {
         ;;
 
         *)
-            echo -e "\e[0;31m case default - function 'set-partitionNo': type not found, exit. \e[39m"
+            echo -e "\e[0;31m case default - function 'set-partitionNo': type not found, exit. \e[0m"
             exit 1
         ;;
     esac
@@ -420,7 +420,7 @@ mount-partition() { # mounting all partitions (if btrfs: including subvolumes) a
                 fi
 
                 if [ ! -e  "${7}${btrfsSubvolLayout[${subvol}]}" ]; then   # if mount target (folder) does NOT exist
-                    echo -e "\e[0;33m    |__ mount target '${7}${btrfsSubvolLayout[${subvol}]}' does not exist, folder will be created...\e[39m" # e.g. /mnt/home
+                    echo -e "\e[0;33m    |__ mount target '${7}${btrfsSubvolLayout[${subvol}]}' does not exist, folder will be created...\e[0m" # e.g. /mnt/home
                     mkdir -p "${7}${btrfsSubvolLayout[${subvol}]}"
 
                     if [ "${7}${btrfsSubvolLayout[${subvol}]}" = "${7}${snapperSnapshotFolder}" ]; then   # e.g.: if /mnt/.snapshots
@@ -432,7 +432,7 @@ mount-partition() { # mounting all partitions (if btrfs: including subvolumes) a
             if [ "${snapperRollback}" = true ]; then
                 echo "- creating mount targets for snapperRollbackFolder, if it does not exist..."
                 if [ ! -e  "${7}${snapperRollbackFolder}" ]; then   # if mount target (folder) does NOT exist
-                    echo -e "\e[0;33m    |__ mount target '${7}${snapperRollbackFolder}' does not exist, folder will be created...\e[39m" # e.g. /mnt/home
+                    echo -e "\e[0;33m    |__ mount target '${7}${snapperRollbackFolder}' does not exist, folder will be created...\e[0m" # e.g. /mnt/home
                     mkdir -p "${7}${snapperRollbackFolder}"
                     chmod -R 750 "${7}${snapperRollbackFolder}" && chown -R :wheel "${7}${snapperRollbackFolder}"
                 fi
@@ -487,7 +487,7 @@ mount-partition() { # mounting all partitions (if btrfs: including subvolumes) a
     # needs to be mounted AFTER mounting root at /mnt (see comment below for EFI)
     if [ "${swapType}" = "partition" ]; then
         if [ "${encryption}" = "true" ]; then
-            echo -e "\e[0;33m- Swap partition - config option 'encryption=true': not mounting swap at this point. Swap partition with encryption will be handled separately.\e[39m"
+            echo -e "\e[0;33m- Swap partition - config option 'encryption=true': not mounting swap at this point. Swap partition with encryption will be handled separately.\e[0m"
         else
             echo "- mounting swap..."
             swapon "${1}${5}"                  # swap-partition # e.g. swapon /dev/vda2
@@ -534,7 +534,7 @@ create-btrfsSubvolume() {             # https://wiki.archlinux.org/title/Btrfs#S
             echo "|__ creating subvolume '${subvol}'..."
             sudo btrfs subvolume create "${1}/${subvol}"
         else
-            echo -e "\e[0;33m|__ Subvolume '${1}/${subvol}' already present\e[39m"
+            echo -e "\e[0;33m|__ Subvolume '${1}/${subvol}' already present\e[0m"
         fi
     done
 }
@@ -592,17 +592,17 @@ create-fstab4BtrfsRootPartition() {   # function not used; btrfs subvolumes get 
         echo "|__ creating entry for subvolume '${subvol}' with mount point '${btrfsSubvolLayout[${subvol}]}'..."
 
         if [ ! -e  "${mountPoint}${btrfsSubvolLayout[${subvol}]}" ]; then       # if mount target (folder) NOT existing
-            echo -e "\e[0;33m    |__ mount target '${mountPoint}${btrfsSubvolLayout[${subvol}]}' does not exist, folder will be created...\e[39m"
+            echo -e "\e[0;33m    |__ mount target '${mountPoint}${btrfsSubvolLayout[${subvol}]}' does not exist, folder will be created...\e[0m"
             sudo mkdir -p "${mountPoint}${btrfsSubvolLayout[${subvol}]}"
         fi
 
         if [[ $(grep "subvol=/${subvol}," "${1}") ]]; then                      # if entry for options (e.g. ...'subvol=/@,'...) already present in fstab
-            echo -e "\e[0;33m    |__ entry for subvolume '${subvol}' already present, check and correct if necessary\e[39m"
+            echo -e "\e[0;33m    |__ entry for subvolume '${subvol}' already present, check and correct if necessary\e[0m"
             subvolInFstab='true'
         fi
 
         if [[ $(grep -E " +${btrfsSubvolLayout[${subvol}]} +" "${1}") ]]; then  # if mount target (e.g. for '/') already present in fstab
-            echo -e "\e[0;33m    |__ mount target '${btrfsSubvolLayout[${subvol}]}' already present, will not create entry '${subvol}' (again), check and correct if necessary\e[39m"
+            echo -e "\e[0;33m    |__ mount target '${btrfsSubvolLayout[${subvol}]}' already present, will not create entry '${subvol}' (again), check and correct if necessary\e[0m"
             mountPointInFstab='true'
         fi
 
@@ -625,12 +625,12 @@ set-btrfsDefaultSubvolume() {
         if [ -n "${rootSubvolumeID}" ]; then
             btrfs subvolume set-default "${rootSubvolumeID}" "${1}" # e.g.: btrfs subvolume set-default "256" /mnt
         else
-            echo -e"\e[0;31m!!! Could not set default btrfs subvolume !!!\e[39m"
+            echo -e"\e[0;31m!!! Could not set default btrfs subvolume !!!\e[0m"
             echo "Trying to set ID '256' as default subvolume (root subvolume @)..."
             btrfs subvolume set-default 256 "${1}"
         fi
     else
-        echo -e"\e[0;31m!!! function set-btrfsDefaultSubvolume(): Given path does not exist !!!\e[39m"
+        echo -e"\e[0;31m!!! function set-btrfsDefaultSubvolume(): Given path does not exist !!!\e[0m"
     fi
 }
 
@@ -736,7 +736,7 @@ config-snapperRollback() { # called in a separate script after reboot
 
     echo "Download and install snapper-rollback (AUR)..."
     if [[ $(command -v snapper-rollback) ]]; then
-        echo -e "\e[1;33m- 'snapper-rollback' is already installed \e[39m"
+        echo -e "\e[1;33m- 'snapper-rollback' is already installed \e[0m"
     else
         # echo "(Initial-)Password '${initialPassword}' can be used if asked"
         # su - USERID -c "curl -L -O https://aur.archlinux.org/cgit/aur.git/snapshot/snapper-rollback.tar.gz" # user not yet available in chroot
@@ -880,7 +880,7 @@ install-bootloader() {
         echo "- installing ${bootloader}"
         pacman -S --needed --noconfirm "${bootloader}" # install grub
         # if [ "${filesystemType}" = "btrfs" ]; then pacman -S --noconfirm grub; else pacman -S --noconfirm grub; fi   # grub-btrfs
-        echo -e "\n\e[0;35m- Configuring the boot loader \e[39m"
+        echo -e "\n\e[0;35m- Configuring the boot loader \e[0m"
         config-bootloader-grub
 
 
@@ -909,7 +909,7 @@ install-bootloader() {
         # ### TEST --------------------------------------------------------------------
 
     elif [ "${bootloader}" = "systemd-boot" ]; then
-        echo -e "\e[0;35m- ${bootloader} - installing the UEFI boot manager \e[39m"
+        echo -e "\e[0;35m- ${bootloader} - installing the UEFI boot manager \e[0m"
         bootctl --entry-token=machine-id --make-entry-directory=yes install
 
         config-bootloader-systemdboot
@@ -938,7 +938,7 @@ get-uuidRootPartition-chroot() {
 
     if [ -z "${uuidRootPartition}" ]; then
         blkid
-        # echo -e "\e[0;31mUUID of root partition (NOT the mapper device !) could not be defined, please enter manually.\e[39m"
+        # echo -e "\e[0;31mUUID of root partition (NOT the mapper device !) could not be defined, please enter manually.\e[0m"
         read -r -p "Please enter UUID of root partition manually: " uuidRootPartition
     fi
 
@@ -947,7 +947,7 @@ get-uuidRootPartition-chroot() {
 
 config-bootloader-grub() {
     if [ "${encryption}" = "true" ]; then
-        echo -e "\n\e[0;35m- Configuring ${bootloader} boot loader (encryption settings) \e[39m"
+        echo -e "\n\e[0;35m- Configuring ${bootloader} boot loader (encryption settings) \e[0m"
         # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#Configuring_the_boot_loader
         # In order to unlock the encrypted root partition at boot
 
@@ -973,7 +973,7 @@ config-bootloader-grub() {
 
     if [ "${zram}" = "true" ]; then
         # - https://wiki.archlinux.org/title/Zram#Using_zram-generator
-        echo -e "\n\e[0;35m- Configuring ${bootloader} boot loader (zram settings) \e[39m"
+        echo -e "\n\e[0;35m- Configuring ${bootloader} boot loader (zram settings) \e[0m"
         echo -e "'zwap' prevents 'zram' from being used effectively, will be disabled permanently via kernel parameter..." # 'zswap' is used by default in Arch Linux
         # zswapDisable_kernelOption='zswap.enabled=0' # already set in 'archinstall_autoBash.config'
         if [[ -z $(grep "${zswapDisable_kernelOption}" "${grubConfDefaultPath}") ]]; then # wenn kernel option noch nicht in ${grubConfDefaultPath}
@@ -984,7 +984,7 @@ config-bootloader-grub() {
             echo -e "Recreate grub.cfg, including the new kernel option..."
             grub-mkconfig -o "${pathGrubCfg}"
         else
-            echo -e "\e[1;33m- Kernel option to disable 'zswap' already in '${grubConfDefaultPath}' \e[39m"
+            echo -e "\e[1;33m- Kernel option to disable 'zswap' already in '${grubConfDefaultPath}' \e[0m"
             # head -n 8 -v "${grubConfDefaultPath}"
         fi
     else
@@ -993,7 +993,7 @@ config-bootloader-grub() {
 }
 
 config-bootloader-systemdboot() {
-    echo -e "\n\e[0;35m- Configuring ${bootloader} boot loader \e[39m"
+    echo -e "\n\e[0;35m- Configuring ${bootloader} boot loader \e[0m"
 
     machineid=$(cat /etc/machine-id)
     efiPartition_kernelInitramfsPath="${pathEfi}/${machineid}/" # e.g.: /efi/af36e2965f254d26a73f1eb3e6049a8c/
@@ -1221,22 +1221,22 @@ config-systemOnEsp() {
             options="img_dev=${efiPartition} img_loop=EFI/${espSystemFolderName}/${isoFileName} archisobasedir=${espSystemFolderName} copytoram"
         ;;
         *)
-            echo -e "\e[1;33m'${espSystemFolderName}' - config-systemOnEsp - no config available yet.\e[39m"
+            echo -e "\e[1;33m'${espSystemFolderName}' - config-systemOnEsp - no config available yet.\e[0m"
             return 0
         ;;
     esac
 
     # check available disk space an create espSystemFolder:
     if [[ -n $(sudo ls "${espSystemFolder}") ]]; then # if folder not exists thows error message, but continues with else (coud add 2>/dev/null)
-        echo -e "\e[1;33mFolder '${espSystemFolder}' already exists. Skipping 'config-systemOnEsp'\e[39m"
+        echo -e "\e[1;33mFolder '${espSystemFolder}' already exists. Skipping 'config-systemOnEsp'\e[0m"
         return 0
     else
         freeDiskpace=$(sudo df --output=avail "${pathEfi}" | tail -n+2 | xargs)
         freeDiskpace=$(("${freeDiskpace}" / 1024)) # size in MB
         availableDiskpace=$(("${freeDiskpace}"-"${reserveDiskspaceESP}"))
         if [ "${availableDiskpace}" -lt "${requiredDiskspaceSystemOnESP}" ]; then
-            echo -e "\e[0;31mNot enough disk space. Skipping 'config-systemOnEsp' !\e[39m"
-            echo -e "\e[0;31m- availableDiskpace (reduced by reserve): ${availableDiskpace}, requiredDiskspaceSystemOnESP: ${requiredDiskspaceSystemOnESP}\e[39m"
+            echo -e "\e[0;31mNot enough disk space. Skipping 'config-systemOnEsp' !\e[0m"
+            echo -e "\e[0;31m- availableDiskpace (reduced by reserve): ${availableDiskpace}, requiredDiskspaceSystemOnESP: ${requiredDiskspaceSystemOnESP}\e[0m"
             return 1
         else
             echo -e "- Creating folder '${espSystemFolder}'..."
@@ -1266,7 +1266,7 @@ config-systemOnEsp() {
             sudo cp -vf "${iso}" "${espSystemFolder}/"
         ;;
         *)
-            echo -e "\e[1;33m${system}' - config-systemOnEsp - no config available yet.\e[39m"
+            echo -e "\e[1;33m${system}' - config-systemOnEsp - no config available yet.\e[0m"
             return
         ;;
     esac
@@ -1359,7 +1359,7 @@ install-DesktopEnvironment() {
             ;;
 
             *)
-                echo -e "\e[0;33mdefault case, function 'install-DesktopEnvironment' - '${desktopEnvironmentName}' not available\e[39m"   # TOOD: add more desktop environments
+                echo -e "\e[0;33mdefault case, function 'install-DesktopEnvironment' - '${desktopEnvironmentName}' not available\e[0m"   # TOOD: add more desktop environments
             ;;
         esac
 

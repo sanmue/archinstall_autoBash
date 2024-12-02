@@ -14,7 +14,7 @@
 # ------------------
 # Config / Variables
 # ------------------
-echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.config' \e[39m"
+echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.config' \e[0m"
 # shellcheck source=archinstall_autoBash.config
 source archinstall_autoBash.config   # including the separate file containing the config / variables used by the script
 
@@ -22,7 +22,7 @@ source archinstall_autoBash.config   # including the separate file containing th
 # ---------
 # Functions
 # ---------
-echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.shlib' \e[39m"
+echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.shlib' \e[0m"
 # shellcheck source=archinstall_autoBash.shlib
 source archinstall_autoBash.shlib    # including the separate file containing the functions used by the script
 
@@ -31,8 +31,8 @@ source archinstall_autoBash.shlib    # including the separate file containing th
 # main
 # ----
 
-echo -e "\n\n\e[0;36m# --- Pre-installation --- \e[39m"
-echo -e "\n\e[0;35m## Setting console keyboard layout and terminal font \e[39m"
+echo -e "\n\n\e[0;36m# --- Pre-installation --- \e[0m"
+echo -e "\n\e[0;35m## Setting console keyboard layout and terminal font \e[0m"
 echo "- setting console keyboard to: '${consoleKeyboardLayout}' (temporary for current session)"
 loadkeys "${consoleKeyboardLayout}"    # set console keyboard layout (temporary for current session)
 echo "- setting terminal font to: '${terminalFont}' (temporary for current session)"
@@ -40,7 +40,7 @@ setfont "${terminalFont}"              # set terminal font (temporary for curren
 
 # TODO: Check internet connection
 
-echo -e "\n\e[0;35m## Update the system clock (set-timezone) \e[39m"
+echo -e "\n\e[0;35m## Update the system clock (set-timezone) \e[0m"
 echo "- setting timezone to: '${timezone}'"
 timedatectl set-timezone "${timezone}" # set timezone
 #timedatectl status                    # show timezone settings
@@ -51,7 +51,7 @@ echo "checking if device path '${device}' is valid"
 check-devicePath "${device}"                    # check if configured device path is valid
 
 if [ ${partitionDisk} = "true" ]; then          # if partitioning the device should be executed by the script
-    echo -e "\n\e[0;35m## Partitioning the disk '${device}'...\e[39m"
+    echo -e "\n\e[0;35m## Partitioning the disk '${device}'...\e[0m"
 
     erase-device "${device}" "${blockSize}"     # executed only if eraseDisk="true" is set # the device will be erased (overwritten via dd command)
     partition-disk "${bootMode}" "${partitionType}" "${device}" "${swapSize}" "${efiPartitionSize}"   # partition the device
@@ -60,7 +60,7 @@ if [ ${partitionDisk} = "true" ]; then          # if partitioning the device sho
 fi
 
 if [ ${formatPartition} = "true" ]; then        # if formatting the partitions should be executed by the script
-    echo -e "\n\e[0;35m## Formating the partitions\e[39m"
+    echo -e "\n\e[0;35m## Formating the partitions\e[0m"
 
     # if encryption="true": the root partition will be encrypted with luks
     format-partition "${device}" "${bootMode}" "${partitionType}" "${filesystemType}" "${fileSystemTypeEfi}" "${fatSize}" "${partitionLabelRoot}" "${partitionLabelEfi}" "${partitionLabelHome}" "${partitionLabelSwap}"
@@ -74,7 +74,7 @@ fi
 
 
 if [ ${mountPartition} = "true" ]; then         # this setp is actually only needed for btrfs + subvolumes # if mounting of the partitions should be done by the script
-    echo -e "\n\e[0;35m## Initial mount of root file system \e[39m"
+    echo -e "\n\e[0;35m## Initial mount of root file system \e[0m"
 
     # "${encryptionDeviceMapperPath}" "${encryptionRootName}"
     if [ "${encryption}" = "true" ]; then
@@ -84,7 +84,7 @@ if [ ${mountPartition} = "true" ]; then         # this setp is actually only nee
     fi
 
     if [ ${filesystemType} = "btrfs" ]; then    # if btrfs: create subvolumes
-        echo -e "\n\e[0;35m## Creating btrfs subvolume layout\e[39m"
+        echo -e "\n\e[0;35m## Creating btrfs subvolume layout\e[0m"
         create-btrfsSubvolume "/mnt"
         set-btrfsDefaultSubvolume "/mnt"        # set default subvolume: use subvolume as the root mountpoint
 
@@ -99,7 +99,7 @@ if [ ${mountPartition} = "true" ]; then         # this setp is actually only nee
 fi
 
 if [ ${mountPartition} = "true" ]; then         # preparation for installation   # if mounting of the partitions should be done by the script
-    echo -e "\n\e[0;35m## Mounting all partitions for installation step \e[39m"
+    echo -e "\n\e[0;35m## Mounting all partitions for installation step \e[0m"
     mount-partition "${device}" "${bootMode}" "${filesystemType}" "${efiPartitionNo}" "${swapPartitionNo}" "${rootPartitionNo}" "/mnt" "${swapFileName}" "${swapFilePath}" "${swapSize}"
     # parameter 'swapFilePath' and 'swapSize' needed for swap file and btrfs + subvol (not for swap partition)
     # parameter 'swapFileName' only needed for swap file + NO btrfs with subvols (not for swap partition)
@@ -115,16 +115,16 @@ fi
 # ### TEST --------------------------------------------------------------------
 
 
-echo -e "\n\n\e[0;36m# --- Installation --- \e[39m"
+echo -e "\n\n\e[0;36m# --- Installation --- \e[0m"
 # TODO: custom config mirrors pacman / reflector
 
-echo -e "\n\e[0;35m## Install essential packages (pacstrap) \e[39m"
+echo -e "\n\e[0;35m## Install essential packages (pacstrap) \e[0m"
 pacstrap -K /mnt ${strListPacstrapPackage}  # ! do not doublequote '${strListPacstrapPackage}' or pacstrap will fail !
                                             # Install essential packages to "/mnt" (new root partition is mounted to /mnt)
                                             # Not enclosing the variable in quotes is intentional; # TODO: using an array or a function could be prettier (https://www.shellcheck.net/wiki/SC2086)
 
-echo -e "\n\n\e[0;36m# --- Configure the system --- \e[39m"
-echo -e "\n\e[0;35m## Fstab \e[39m"
+echo -e "\n\n\e[0;36m# --- Configure the system --- \e[0m"
+echo -e "\n\e[0;35m## Fstab \e[0m"
 echo "- generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
@@ -171,7 +171,7 @@ chmod +x /mnt/root/archinstall_autoBash.config
 chmod +x /mnt/root/archinstall_autoBash.shlib
 
 # chroot to new root and continue install with script "archinstall_autoBash_chroot.sh":
-echo -e "\n\e[0;35m## Chroot \e[39m"
+echo -e "\n\e[0;35m## Chroot \e[0m"
 
 echo "- starting 'archinstall_autoBash_chroot.sh' (arch-chroot)"
 arch-chroot /mnt /usr/bin/env bash -c "su - -c /root/archinstall_autoBash_chroot.sh"
@@ -187,7 +187,7 @@ rm "/mnt/root/${fileRootPartition}"
 
 # config snapper:
 if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ]; then
-    echo -e "\n\n\e[0;36m# Configure snapper for root subvolume \e[39m"
+    echo -e "\n\n\e[0;36m# Configure snapper for root subvolume \e[0m"
     config-snapperLiveEnv "${snapperConfigName_root}" "/mnt" "/" # '/mnt' = current mount path of (root) subvolume, /' = final 'real' path of (root) subvolume to create the config for
 fi
 
@@ -202,12 +202,12 @@ sudo touch "${flagFile}"
 
 
 # reboot:
-echo -e "\n\n\e[0;36m# --- Reboot --- \e[39m"
+echo -e "\n\n\e[0;36m# --- Reboot --- \e[0m"
 echo "- unmounting /mnt"
 umount -R /mnt
-echo -e "\n\e[1;31mInitial password: '${initialPassword}'\e[39m"
+echo -e "\n\e[1;31mInitial password: '${initialPassword}'\e[0m"
 echo    "for 'root' and created users"
-echo -e "\e[1;31mPlease change after reboot!\e[39m"
+echo -e "\e[1;31mPlease change after reboot!\e[0m"
 echo -e "\nRemember script 'archinstall_autoBash_afterReboot.sh'"
 echo -e "\nFinished, rebooting in 5 seconds..."
 

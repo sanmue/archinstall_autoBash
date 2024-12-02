@@ -16,7 +16,7 @@ afterReboot="true"
 # ------------------
 # Config / Variables
 # ------------------
-echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.config' \e[39m"
+echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.config' \e[0m"
 # shellcheck source=archinstall_autoBash.config
 source archinstall_autoBash.config # including the separate file containing the config / variables used by the script
 
@@ -24,7 +24,7 @@ source archinstall_autoBash.config # including the separate file containing the 
 # ---------
 # Functions
 # ---------
-echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.shlib' \e[39m"
+echo -e "\n\n\e[0;36m# Sourcing 'archinstall_autoBash.shlib' \e[0m"
 # shellcheck source=archinstall_autoBash.shlib
 source archinstall_autoBash.shlib # including the separate file containing the functions used by the script
 
@@ -34,10 +34,10 @@ source archinstall_autoBash.shlib # including the separate file containing the f
 # ----
 
 # --- snapper-rollback (AUR):
-echo -e "\n\e[0;36m# --- Post-installation - after reboot --- \e[39m"
-echo -e "\e[0;31mExecute this script as a user with sudo privileges (not as 'root') \e[39m"
+echo -e "\n\e[0;36m# --- Post-installation - after reboot --- \e[0m"
+echo -e "\e[0;31mExecute this script as a user with sudo privileges (not as 'root') \e[0m"
 
-echo -e "\n\e[0;35m## Install and config snapper-rollback (AUR) \e[39m"
+echo -e "\n\e[0;35m## Install and config snapper-rollback (AUR) \e[0m"
 if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ] && [ "${snapperRollback}" = "true" ]; then
     config-snapperRollback "${snapperRollbackFolder}" "${snapperSnapshotsSubvolName}" "${snapperRollbackConfig}" # e.g.: '/.btrfsroot' and '@snapshots' and '/etc/snapper-rollback.conf'
     if [ "${bootloader}" = "systemd-boot" ]; then config-shellConfUser-rollbackFunction; fi
@@ -51,7 +51,7 @@ fi
 # ###
 #
 # --- zram:
-# echo -e "\n\e[0;35m## Install and config 'zram' (usage as swap) \e[39m"
+# echo -e "\n\e[0;35m## Install and config 'zram' (usage as swap) \e[0m"
 # if [ "${zram}" = "true" ]; then
 #     # - https://wiki.archlinux.org/title/Zram#Using_zram-generator
 #     echo -e "'zwap' prevents 'zram' from being used effectively, will be disabled permanently via kernel parameter..." # 'zswap' is used by default in Arch Linux
@@ -65,7 +65,7 @@ fi
 #         echo -e "Recreate grub.cfg, including the new kernel option..."
 #         sudo grub-mkconfig -o "${pathGrubCfg}"
 #     else
-#         echo -e "\e[1;33m- Kernel option to disable 'zswap' already in '${grubConfDefaultPath}' \e[39m"
+#         echo -e "\e[1;33m- Kernel option to disable 'zswap' already in '${grubConfDefaultPath}' \e[0m"
 #         # head -n 8 -v "${grubConfDefaultPath}"
 #     fi
 
@@ -90,7 +90,7 @@ fi
 #     echo -e "vm.swappiness = 180\nvm.watermark_boost_factor = 0" | sudo tee "${zramParameterConfFilePath}" >/dev/null
 #     echo -e "vm.watermark_scale_factor = 125\nvm.page-cluster = 0" | sudo tee --append "${zramParameterConfFilePath}" >/dev/null
 # else
-#     echo -e "\e[1;33m- 'zram' not set to 'true' in config file, skipping \e[39m"
+#     echo -e "\e[1;33m- 'zram' not set to 'true' in config file, skipping \e[0m"
 # fi
 # ### END zram --------------------------------------------------------------------------------
 
@@ -102,7 +102,7 @@ fi
 if [ "${bootloader}" = "systemd-boot" ]; then
     downloadFolder="${HOME}/Downloads"
 
-    echo -e "\n\e[0;35m## System on ESP\e[39m"
+    echo -e "\n\e[0;35m## System on ESP\e[0m"
     echo -e "Please make sure you downloaded the installation iso to '${downloadFolder}'\n"
 
     for system in "${systemOnESP[@]}"; do
@@ -128,7 +128,7 @@ if [ "${bootloader}" = "systemd-boot" ]; then
         # e.g.: /home/userid/Downloads/archlinux-2024.11.01-x86_64.iso # /home/userid/Downloads/grml64-full_2024.02.iso
         isoFileName=$(find "${downloadFolder}" -mindepth 1 -maxdepth 1 -prune -type f -name "${searchPattern}" | cut -d'/' -f5)
         if [ -z "${isoFileName}" ]; then
-            echo -e "\e[1;33mSkipping 'System on ESP' for '${system}'. No installation iso found.\e[39m"
+            echo -e "\e[1;33mSkipping 'System on ESP' for '${system}'. No installation iso found.\e[0m"
             echo "- You can download the iso to '${downloadFolder}' and start this script again."
         else
             echo "- found iso-file: '${isoFileName}' in '${downloadFolder}'"
@@ -141,10 +141,10 @@ if [ "${bootloader}" = "systemd-boot" ]; then
             fi
     done
 else
-    echo -e "\e[1;33mSkipping 'System on ESP (rescue system)'. Currently only available for systemd-boot.\e[39m"
+    echo -e "\e[1;33mSkipping 'System on ESP (rescue system)'. Currently only available for systemd-boot.\e[0m"
 fi
 # ### END System on ESP -------
 
 
 # --- Info message:
-# echo -e "\n\e[1;33mSome changes may only take effect after a restart. \e[39m" # e.g. for: 'zwap'
+# echo -e "\n\e[1;33mSome changes may only take effect after a restart. \e[0m" # e.g. for: 'zwap'
