@@ -864,6 +864,16 @@ config-sudoUser() {
     echo "%wheel ALL=(ALL:ALL) ALL" >> "/etc/sudoers.d/wheel"
 }
 
+config-multilibrepo-liveenv() {
+    local pacmanconf="/etc/pacman.conf"
+    local searchString='\#\[multilib\]'
+    local replaceString='[multilib]'
+    local insertString='Include = /etc/pacman.d/mirrorlist'
+
+    sed -i "/${searchString}/a ${insertString}" "${pacmanconf}"
+    sed -i "s|^${searchString}|${replaceString}|g" "${pacmanconf}"
+}
+
 install-grafics() {
 if [ "${graficsCardInstalled}" = "true" ] && [ "${installDesktopEnvironment}" = "true" ]; then
         echo "- installing configured grafics packages"
