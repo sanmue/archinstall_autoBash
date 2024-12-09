@@ -872,6 +872,8 @@ config-multilibrepo-liveenv() {
 
     sed -i "/${searchString}/a ${insertString}" "${pacmanconf}"
     sed -i "s|^${searchString}|${replaceString}|g" "${pacmanconf}"
+
+    pacman -Sy
 }
 
 install-grafics() {
