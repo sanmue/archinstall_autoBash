@@ -3,7 +3,9 @@
 Bash script to automate Arch Linux installation
 
 - installation parameters are set in a separate configuration file
-- no manual intervention required during installation process, except for encryption confirmation and encryption password
+- manual input required only for:
+  - encryption confirmation and encryption password
+  - selcting grafics card (needs testing / maybe manual conf)
 
 ## Usage
 
@@ -31,7 +33,7 @@ Bash script to automate Arch Linux installation
     - remember to make the script files executable first, or simply all files in the folder: `chmod +x *`
 - after reboot:
   - login as a user with sudo privileges
-  - clone the repo again and `cd` into it (for instructions: see further above)   
+  - clone the repo again and `cd` into it (for instructions: see further above)
   - execute the script: `./archinstall_autoBash_afterReboot.sh` (as a user with sudo privileges)
     - installs 'snapper-rollback' (default=true, set/change via config)
     - bootable live system on ESP (e.g. for system rescue) (default, set/change via config)

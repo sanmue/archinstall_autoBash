@@ -175,7 +175,7 @@ echo -e "\n\e[0;35m## Chroot \e[0m"
 
 echo "- starting 'archinstall_autoBash_chroot.sh' (arch-chroot)"
 arch-chroot /mnt /usr/bin/env bash -c "su - -c /root/archinstall_autoBash_chroot.sh"
-echo -e "\e[0;33m- coming back from chroot\e[39m\n\n"
+echo -e "\e[0;33m- coming back from chroot\e[0m\n\n"
 
 # cleanup:
 echo "- cleanup: deleting previously copied script/files in '/mnt/root'"

@@ -864,7 +864,95 @@ config-sudoUser() {
     echo "%wheel ALL=(ALL:ALL) ALL" >> "/etc/sudoers.d/wheel"
 }
 
-config-multilibrepo-liveenv() {
+install-grafics() {
+if [ "${graficsCardInstalled}" = "true" ] && [ "${installDesktopEnvironment}" = "true" ]; then
+        echo "- installing configured grafics packages"
+
+        # lspci -k | grep -A 2 -E "(VGA|3D)" # lspci | grep -e VGA -e 3D
+        mapfile -t arrGcdev < <(lspci | grep -E "(VGA|3D)")
+        i=0
+        for dev in "${arrGcdev[@]}"; do
+            i=$((i+1))
+            echo -e "\e[1mDevice \e[1;33m${i}\e[0m: ${dev}\n"
+        done
+
+        gcdevno=99999
+        while [ "${gcdevno}" -gt "${i}" ] || [ "${gcdevno}" -lt 0 ] ; do
+            read -rp "Enter valid Number of the grafics card device (0=skip): " gcdevno
+        done
+
+        if [ ! "${gcdevno}" -eq 0 ]; then
+            gcdevno=$((gcdevno-1)) # array index count starts at 0
+            strListGraficsCardPackage=$(get-graficsPackage "${arrGcdev[${gcdevno}]}")
+        else
+            strListGraficsCardPackage=""
+        fi
+
+        if [[ ! ${strListGraficsCardPackage} = "" ]]; then
+            config-multilibrepo # For 32-bit application support the pacman 'multilib' repo hast to be enabled
+            pacman -S --noconfirm --needed ${strListGraficsCardPackage};
+        else
+            echo -e "\e[0;33m'strListGraficsCardPackage' is empty, will not install gravics card packages.\e[0m"
+        fi
+        check-exitStatusLastCommand $?
+    else
+        echo "- NOT installing grafics card packages, 'graficsCardInstalled': '${graficsCardInstalled}', 'installDesktopEnvironment': '${installDesktopEnvironment}' (both must be 'true')"
+    fi
+}
+
+get-graficsPackage() {
+    # --- GRAFICS - need testing, check / config manually for your system ---
+    # https://wiki.archlinux.org/title/AMDGPU
+    # https://wiki.archlinux.org/title/Intel_graphics and https://wiki.archlinux.org/title/Hardware_video_acceleration
+    # https://wiki.archlinux.org/title/NVIDIA
+    # https://wiki.archlinux.org/title/NVIDIA_Optimus
+
+    gcdev="${1}" # Parameter 1: lspci output for selected grafics card in 'install-grafics()'
+    # gcdev="XXX" # overwriting Parameter 1 # set manually to "AMD" or "NVIDIA" or "Intel"; or s.th. else an set pacakges manually
+    strListGraficsCardPackage=""
+    strListGraficsCardPackage+="xorg-server xorg-xinit "
+
+    case "${gcdev}" in
+        *AMD*)
+            strListGraficsCardPackage+="mesa "
+            strListGraficsCardPackage+="xf86-video-amdgpu xf86-video-ati "
+            strListGraficsCardPackage+="vulkan-radeon libva-mesa-driver " # mesa-vdpau
+            strListGraficsCardPackage+="vulkan-icd-loader vulkan-headers vulkan-tools "
+            strListGraficsCardPackage+="lib32-mesa lib32-vulkan-radeon lib32-libva-mesa-driver lib32-mesa-vdpau " # For 32-bit application support
+            strListGraficsCardPackage+="lib32-vulkan-icd-loader "
+        ;;
+
+        *Intel*)
+            strListGraficsCardPackage+="mesa "
+            strListGraficsCardPackage+="xf86-video-intel "
+            strListGraficsCardPackage+="vulkan-intel " # For Vulkan support (Broadwell and newer)
+            strListGraficsCardPackage+="lib32-mesa lib32-vulkan-intel " # For 32-bit application support
+            strListGraficsCardPackage+="intel-media-driver " # Hardware video acceleration (Broadwell and newer)
+            # strListGraficsCardPackage+="libva-intel-driver "
+        ;;
+
+        *NVIDIA*)
+            # strListGraficsCardPackage+="mesa libva-mesa-driver xf86-video-nouveau " # open-source nouveau driver
+            # strListGraficsCardPackage+="nvidia-open nvidia-utils nvidia-settings dkms nvidia-open-dkms " # Turing (NV160/TUXXX) and newer
+            strListGraficsCardPackage+="nvidia nvidia-utils nvidia-settings " # Maxwell (NV110/GMXXX) through Ada Lovelace (NV190/ADXXX)
+            # 'nvidia-lts' for use with the linux-lts kernel; 'nvidia-dkms dkms' for all other kernels instead of 'nvidia'
+            # strListGraficsCardPackage+="dkms nvidia-dkms "
+            strListGraficsCardPackage+="lib32-nvidia-utils " # For 32-bit application support
+            strListGraficsCardPackage+="vulkan-icd-loader lib32-vulkan-icd-loader " # add. features (hardware-accelerated rendering)
+        ;;
+
+        *)
+            echo -e "\e[0;33mcase default: graficsCardManufacturer - not found in the list (-> not *AMD*, *NVIDIA* or *Intel*).\e[0m"
+            echo -e "\e[0;33mNo grafics card installed or set variable 'strListGraficsCardPackage' in the script manually if necessary.\e[0m"
+            strListGraficsCardPackage="" # for others: add packages manually
+        ;;
+    esac
+
+    echo "${strListGraficsCardPackage}"
+    return 0
+}
+
+config-multilibrepo() {
     local pacmanconf="/etc/pacman.conf"
     local searchString='\#\[multilib\]'
     local replaceString='[multilib]'
@@ -874,17 +962,6 @@ config-multilibrepo-liveenv() {
     sed -i "s|^${searchString}|${replaceString}|g" "${pacmanconf}"
 
     pacman -Sy
-}
-
-install-grafics() {
-if [ "${graficsCardInstalled}" = "true" ] && [ "${installDesktopEnvironment}" = "true" ]; then
-        echo "- installing configured grafics packages"
-        # pacman -S --noconfirm --needed ${strListGraficsCardPackage}    # install packages for the grafics card
-        if [[ ! ${strListGraficsCardPackage} = "" ]]; then pacman -S --noconfirm --needed ${strListGraficsCardPackage}; fi
-        check-exitStatusLastCommand $?
-    else
-        echo "- NOT installing grafics card packages, 'graficsCardInstalled': '${graficsCardInstalled}', 'installDesktopEnvironment': '${installDesktopEnvironment}' (both must be 'true')"
-    fi
 }
 
 install-bootloader() {
