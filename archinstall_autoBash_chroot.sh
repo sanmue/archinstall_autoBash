@@ -46,6 +46,7 @@ echo -e "\n\e[0;35m## Root password \e[0m"
 set-password root   # set initial password
 
 echo -e "\n\e[0;35m## Grafics\e[0m"
+config-multilibrepo-liveenv # install of 32-bit application support: packages need activated 'multilib' repo
 install-grafics
 
 echo -e "\n\e[0;35m## zram installation + conf \e[0m"
