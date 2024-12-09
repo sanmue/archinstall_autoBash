@@ -771,8 +771,8 @@ config-shellConfUser-rollbackFunction() {
     sudo cp -vf "${rollbackScriptSource}" "${rollbackScriptTargetPath}/"
     sudo chmod 755 "${rollbackScriptTargetPath}/${rollbackScriptName}"
 
-    echo -e "\nAdding an alias to shell conf to easily execute the script.\nCurrently only for: ${arrShellConfFileName[@]}.\nFor other shells / config must be done manually.\n"
-    for shellConfFileName in ${arrShellConfFileName[@]}; do
+    echo -e "\nAdding an alias to shell conf to easily execute the script.\nCurrently only for: ${arrShellConfFileName[*]}.\nFor other shells / config must be done manually.\n"
+    for shellConfFileName in "${arrShellConfFileName[@]}"; do
         echo "Adding alias to '${shellConfFileName}'..."
         shellConfFile=""
         shellConfFile="${HOME}/${shellConfFileName}"
