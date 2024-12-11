@@ -168,6 +168,8 @@ partition-diskUefi() {
     echo w   # Write changes
     ) | sudo fdisk "${1}" 1>/dev/null
 
+    sleep 2 # TEST-workaround since sometimes creating root partition failed because of 'device busy' (VM on external USB (SSD) device) # TODO
+
     if [ "${swapType}" = "partition" ]; then
         (
         echo n   # --- add a new partition: Swap ---
@@ -181,7 +183,7 @@ partition-diskUefi() {
         ) | sudo fdisk "${1}" 1>/dev/null
     fi
 
-    # sleep 2 # TEST-workaround since sometimes creating root partition failed because of 'device busy' (VM on external USB (SSD) device) # TODO
+    sleep 2 # TEST-workaround since sometimes creating root partition failed because of 'device busy' (VM on external USB (SSD) device) # TODO
 
     (
     echo n   # --- add a new partition: root ---
