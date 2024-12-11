@@ -974,13 +974,6 @@ install-bootloader() {
         echo -e "\n\e[0;35m- Configuring the boot loader \e[0m"
         config-bootloader-grub
 
-
-        # ### TEST --------------------------------------------------------------------
-        # echo -e "\nPress Enter to continue - chroot: fct 'install-bootloader', after 'config-bootloader'"
-        # read -r
-        # ### TEST --------------------------------------------------------------------
-
-
         if [ "${bootMode}" = "Bios" ]; then             # Bios
             echo "- ... for Bios boot mode"
             grub-install --target=i386-pc "${device}"
@@ -992,12 +985,6 @@ install-bootloader() {
 
         echo "- creating Grub config file"
         grub-mkconfig -o "${pathGrubCfg}"               # grub: create config
-
-
-        # ### TEST --------------------------------------------------------------------
-        # echo -e "\nPress Enter to continue - chroot: end of fct 'install-bootloader'"
-        # read -r
-        # ### TEST --------------------------------------------------------------------
 
     elif [ "${bootloader}" = "systemd-boot" ]; then
         echo -e "\e[0;35m- ${bootloader} - installing the UEFI boot manager \e[0m"
@@ -1106,14 +1093,6 @@ config-bootloader-systemdboot() {
 
     rootPartitionIsNvme="false"
     if [[ "${rootPartition}" == *nvme* ]]; then rootPartitionIsNvme="true"; fi
-
-    # ### TEST --------------------------------------------------------------------
-    blkid
-    # echo "uuidRootPartition: ${uuidRootPartition}"
-    # echo -e "\nPress Enter to continue - config-bootloader-systemdboot "
-    # read -r
-    # ### TEST --------------------------------------------------------------------
-
 
     # ### #####################################################################################
     # ### Create systemd unit files to copy kernel + intiramfs from /boot to /efi/<machinte-id>
@@ -1254,12 +1233,6 @@ config-bootloader-systemdboot() {
         echo "Check systemd-boot config via 'bootctl --no-pager':"
         bootctl --no-pager # TODO: error handling # On success, 0 is returned, a non-zero failure code otherwise.
     done
-
-
-    # ### TEST --------------------------------------------------------------------
-    # echo -e "\nPress Enter to continue - config-bootloader-systemdboot "
-    # read -r
-    # ### TEST --------------------------------------------------------------------
 }
 
 # post-install - System on ESP (e.g. Archiso, Grml)

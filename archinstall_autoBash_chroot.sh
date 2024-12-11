@@ -110,11 +110,6 @@ if [ "${bootloader}" = "systemd-boot" ]; then
     ls -lah "${efiPartition_kernelInitramfsPath}"
 fi
 
-# ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - chroot: after configuring + executing mkinitcpio "
-# read -r
-# ### TEST --------------------------------------------------------------------
-
 # --- Post-installation (original position in wiki: after reboot) - ! order changed, was moved forward one position compared to the wiki ! ---
 echo -e "\n\n\e[0;36m# --- Post-installation part - brought forward (original position: after reboot --- \e[0m"
 
@@ -144,3 +139,6 @@ if [ "${installFont}" = "true" ]; then
 else
     echo "- Skipping since in config 'installFont' not set to 'true'"
 fi # do not double quote ${strListFontPkg} # TODO: could change to array
+
+# flag file:
+sudo touch "${flagFile}"

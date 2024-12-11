@@ -66,13 +66,6 @@ if [ ${formatPartition} = "true" ]; then        # if formatting the partitions s
     format-partition "${device}" "${bootMode}" "${partitionType}" "${filesystemType}" "${fileSystemTypeEfi}" "${fatSize}" "${partitionLabelRoot}" "${partitionLabelEfi}" "${partitionLabelHome}" "${partitionLabelSwap}"
 fi
 
-
-# ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - after format-partition"
-# read -r
-# ### TEST --------------------------------------------------------------------
-
-
 if [ ${mountPartition} = "true" ]; then         # this setp is actually only needed for btrfs + subvolumes # if mounting of the partitions should be done by the script
     echo -e "\n\e[0;35m## Initial mount of root file system \e[0m"
 
@@ -108,13 +101,6 @@ if [ ${mountPartition} = "true" ]; then         # preparation for installation  
     lsblk
 fi
 
-
-# ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - after mounting partitions (+ all btrfs subvols) to /mnt --- before pacstrap"
-# read -r
-# ### TEST --------------------------------------------------------------------
-
-
 echo -e "\n\n\e[0;36m# --- Installation --- \e[0m"
 # TODO: custom config mirrors pacman / reflector
 
@@ -128,11 +114,6 @@ echo -e "\n\e[0;35m## Fstab \e[0m"
 echo "- generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
 
-# ### TEST --------------------------------------------------------------------
-# echo -e "\n/mnt/etc/fstab (before modification):"
-# cat /mnt/etc/fstab
-# ### TEST --------------------------------------------------------------------
-
 # create-fstab # creating individual fstab
 echo "- modify fstab (if btrfs: deleting mount option 'subvolid' if set (leaving just 'subvol') for all btrfs subvolumes)..."
 modify-fstab "/mnt/etc/fstab" # e.g. btrfs: genfstab includes ...,subvolid=XXX,... in mount options, which we do not want (with regard to snapshots)
@@ -145,18 +126,6 @@ if [ "${encryption}" = "true" ] && [ "${swapType}" = "partition" ]; then
     echo "# encrypted swap partition via ${pathToCrypttab} and LABEL=${partitionLabelSwap}" >> "/mnt/etc/fstab"
     echo "/dev/mapper/swap none swap defaults 0 0" >> "/mnt/etc/fstab"
 fi
-
-
-# ### TEST --------------------------------------------------------------------
-# echo -e "\n/mnt${pathToCrypttab}:"
-# cat "/mnt${pathToCrypttab}"
-# echo -e "\n/mnt/etc/fstab:"
-# cat "/mnt/etc/fstab"
-# # ls -la /mnt/dev/disk/by-label
-# echo -e "\nPress Enter to continue - after genfstab / modify fstab and crypttab"
-# read -r
-# ### TEST --------------------------------------------------------------------
-
 
 # make rquired script files available in chroot environment
 echo "- copy rquired script/files to root-user directory on new root (/mnt/root)"
@@ -190,16 +159,6 @@ if [ "${filesystemType}" = "btrfs" ] && [ "${snapperSnapshot}" = "true" ]; then
     echo -e "\n\n\e[0;36m# Configure snapper for root subvolume \e[0m"
     config-snapperLiveEnv "${snapperConfigName_root}" "/mnt" "/" # '/mnt' = current mount path of (root) subvolume, /' = final 'real' path of (root) subvolume to create the config for
 fi
-
-# flag file:
-sudo touch "${flagFile}"
-
-
-# ### TEST --------------------------------------------------------------------
-# echo -e "\nPress Enter to continue - before reboot"
-# read -r
-# ### TEST --------------------------------------------------------------------
-
 
 # reboot:
 echo -e "\n\n\e[0;36m# --- Reboot --- \e[0m"
