@@ -850,10 +850,11 @@ create-userAccount() {
     for userId in "${arrUserId[@]}"; do
         # useradd -m -U -s /bin/bash -p "${initialPassword}" "${userId}" # not the safe way, but password is in the config anyway... # create new user including: set initial passwort using ${initialPassword} from config
         useradd -m -U -s "/bin/${defaultShellUser}" "${userId}" # create new user
-
         set-password "${userId}"
 
-        if [ "${virtualization}" = "true" ]; then usermod -aG libvirt "${userId}"; fi   # add user to libvirt group
+        # add userId to groups:
+        usermod -aG "${userGroups}" "${userId}"
+        if [ "${virtualization}" = "true" ]; then usermod -aG "${virtGroup}" "${userId}"; fi # add user to libvirt group
     done
 }
 
@@ -864,6 +865,7 @@ config-sudoUser() {
         usermod -aG wheel "${userId}"   # if btrfs + snapper snapshot-folder '.snapshots' gets chown :wheel (in my ansible playbook, Repo 'ansible_workstation')
     done
     echo "%wheel ALL=(ALL:ALL) ALL" >> "/etc/sudoers.d/wheel"
+    chmod 640 /etc/sudoers.d/wheel
 }
 
 install-grafics() {
