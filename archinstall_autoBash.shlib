@@ -820,13 +820,16 @@ set-locales() {
 
 config-network() {
     echo "- setting hostname (/etc/hostname)"
-    echo "${myHostname}" >> /etc/hostname                     # Create / config the hostname file
-    echo "- create + config '/etc/hosts'"
+    echo "${myHostname}.${myDomain}" > /etc/hostname                # Create / config the hostname file
+    echo "- create + config '/etc/hosts'"                           # https://man.archlinux.org/man/hosts.5.en
     {
+        echo "# IPv4 and IPv6 localhost aliases"
         echo "127.0.0.1 localhost"
-        echo "::1 localhost"
         echo "127.0.1.1 ${myHostname}.${myDomain} ${myHostname}"
-    } >> /etc/hosts                                           # Create / config "/etc/hosts"
+        echo "::1 localhost ip6-localhost ip6-loopback"
+        echo "ff02::1 ip6-allnodes"
+        echo "ff02::2 ip6-allrouters"
+    } >> /etc/hosts                                                 # Create / config "/etc/hosts"
 
     echo "- installing network management software and enabling its systemd unit"
     # pacman -S --noconfirm --needed "${strListNetworkPkg}"           # installing network management software and enabling its systemd unit so that it starts at boot
