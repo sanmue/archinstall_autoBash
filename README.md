@@ -13,6 +13,13 @@ Bash script to automate Arch Linux installation
 
 - boot live system from an installation medium
 
+### Install required packages
+
+- `pacman -Sy`
+  - updates package database
+  - use this command only in this case. Otherwise always use pacman -Syu.
+- `pacman -S git vim`
+
 ### Clone the repository
 
 - clone the repository
@@ -23,7 +30,10 @@ Bash script to automate Arch Linux installation
 ### Configuration
 
 - customize the variables in '`archinstall_autoBash.config`' according to your needs
-  - `vim archinstall_autoBash.config` # use your preferred editor instead of 'vim'
+  - `vim archinstall_autoBash.config`
+    - use your preferred editor instead of 'vim'
+    - you may want to change e.g. values for the variables:
+      - arrUserID, arrSudoUser, myHostname, myDomain, virtualization
   - these variables are used by the script to execute the installation
 
 ### Start installation of Arch Linux as configured
@@ -68,13 +78,14 @@ Bash script to automate Arch Linux installation
   - [snapper-rollback (AUR)](https://aur.archlinux.org/packages/snapper-rollback) for simple rollback to a desired snapshot (default: true (install), optional, set/change via config)
     - only in combination with btrfs filesystem and snapper
 - bootable live system on ESP (e.g. for system rescue)
-    - [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) and [Grml on ESP](https://wiki.archlinux.org/title/Systemd-boot#Grml_on_ESP) and [SystemRescue](https://www.system-rescue.org/) on ESP currently supported (default, optional, set/change via config)
-    - only if bootloader is systemd-boot
-    - requires manual download of installation iso to 'Downloads' folder
-    - if the script can not find the installation iso in the 'Downloads' folder, this step will be skipped
-    - after iso download you can execute the "after boot"-script again
+  - [Archiso on ESP](https://wiki.archlinux.org/title/Systemd-boot#Archiso_on_ESP) and [Grml on ESP](https://wiki.archlinux.org/title/Systemd-boot#Grml_on_ESP) and [SystemRescue](https://www.system-rescue.org/) on ESP currently supported (default, optional, set/change via config)
+  - only if bootloader is systemd-boot
+  - requires manual download of installation iso to 'Downloads' folder
+  - if the script can not find the installation iso in the 'Downloads' folder, this step will be skipped
+  - after iso download you can execute the "after boot"-script again
 
 ## Limitations
+
 - no seperate 'home' partition
 - only Gnome Desktop Environment or no DE (optional via config)
 - no multi-boot
