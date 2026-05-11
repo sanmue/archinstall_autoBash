@@ -1432,8 +1432,10 @@ install-DesktopEnvironment() {
             ;;
         esac
 
-        echo "- installing additional packages"
-        pacman -S --noconfirm --needed ${strListDesktopEnvPgk}
+        if [[ -n "${strListDesktopEnvPgk}" ]]; then
+            echo "- installing additional packages"
+            pacman -S --noconfirm --needed ${strListDesktopEnvPgk}
+        fi
     else
         echo "No DesktopEnvironment will be installed because variable 'installDesktopEnvironment' is set to 'false'"
     fi
