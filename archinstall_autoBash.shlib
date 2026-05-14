@@ -272,12 +272,15 @@ format-partition() {
         result=6666  # arbitrary number not equal to 0 (0 = no error in last command)
         while [ "$result" -ne 0 ]; do
             if [ "$result" -ne 6666 ]; then echo -e "\e[1;33mPlease try again, something did not work.\e[0m"; fi
-                if [ "${bootloader}" = "grub" ]; then
-                    cryptsetup luksFormat --iter-time 5000 --pbkdf pbkdf2 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Label (-L, --label) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
-                else # systemd-boot
-                    # Grub 2.14rc1 supports the Argon2i and Argon2id PBKDFs
-                    # - but: GRUB: runs into timeout for device /dev/mapper/root # TODO
-                    cryptsetup luksFormat --iter-time 5000 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Label (-L, --label) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
+            
+            if [ "${bootloader}" = "grub" ]; then
+                cryptsetup luksFormat --iter-time 5000 --pbkdf pbkdf2 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Label (-L, --label) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
+            else # systemd-boot
+                # Grub 2.14rc1 supports the Argon2i and Argon2id PBKDFs
+                # - but: GRUB: runs into timeout for device /dev/mapper/root # TODO
+                cryptsetup luksFormat --iter-time 5000 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Label (-L, --label) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
+            fi
+
             result=$?
         done
 
