@@ -266,11 +266,18 @@ format-partition() {
         # https://man.archlinux.org/man/core/cryptsetup/cryptsetup-luksFormat.8.en
         # https://wiki.archlinux.org/title/Dm-crypt/Device_encryption#Encrypting_devices_with_cryptsetup
         # GRUB's support for LUKS2 is limited; see GRUB#Encrypted /boot for details.
+        # Update: Grub 2.14rc1 supports the Argon2i and Argon2id PBKDFs
+        # - Discussion: https://wiki.archlinux.org/title/Talk:GRUB#grub_2:2.14rc1_added_support_for_LUKS2_+_argon2_encryption.
         echo -e "\nEnrypting root partition..."
         result=6666  # arbitrary number not equal to 0 (0 = no error in last command)
         while [ "$result" -ne 0 ]; do
             if [ "$result" -ne 6666 ]; then echo -e "\e[1;33mPlease try again, something did not work.\e[0m"; fi
-            cryptsetup luksFormat --pbkdf pbkdf2 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Lable (-L) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
+                if [ "${bootloader}" = "grub" ]; then
+                    cryptsetup luksFormat --iter-time 5000 --pbkdf pbkdf2 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Label (-L, --label) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
+                else # systemd-boot
+                    # Grub 2.14rc1 supports the Argon2i and Argon2id PBKDFs
+                    # - but: GRUB: runs into timeout for device /dev/mapper/root # TODO
+                    cryptsetup luksFormat --iter-time 5000 --label "${encryptionRootName}" "${1}${rootPartitionNo}"   # Label (-L, --label) needed in function 'config-bootloader' for easy grep of UUID of root partition from blkid
             result=$?
         done
 
